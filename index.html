@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+
+    <link rel="icon" type="image/png" href="/logo1.png" />
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+
+    <!-- SEO -->
+    <meta
+      name="description"
+      content="Automatize seu WhatsApp com agentes de IA treinados para vender, atender e converter clientes 24h por dia."
+    />
+
+    <!-- Título dinâmico -->
+    <title>ZELT.AI</title>
+
+    <script>
+      const routeTitles = {
+        "/": "ZELT.AI | Agentes de I.A Personalizados para seu negócio",
+        "/login": "Entrar | ZELT.AI",
+        "/register": "Criar Conta | ZELT.AI",
+        "/dashboard": "Painel de Administração | ZELT.AI",
+        "/billing": "Faturamento | ZELT.AI",
+        "/settings": "Configurações | ZELT.AI",
+        "/agents": "Agentes de IA | ZELT.AI",
+      };
+
+      const currentPath = window.location.pathname;
+
+      document.title =
+        routeTitles[currentPath] ||
+        "ZELT.AI | Plataforma de Automação com IA";
+    </script>
+  </head>
+
+  <body>
+    <div id="root"></div>
+
+    <script>
+      window.addEventListener("load", () => {
+        console.clear();
+
+        console.log(
+          "%c⚠️ PARE!",
+          "color: #22c55e; font-size: 48px; font-weight: bold;"
+        );
+
+        console.log(
+          "%cEste console é destinado apenas para desenvolvedores.",
+          "color: black; font-size: 16px;"
+        );
+
+        console.log(
+          "%cSe alguém pediu para você colar scripts aqui, isso pode comprometer sua conta, pagamentos e dados pessoais.",
+          "color: #f87171; font-size: 14px;"
+        );
+
+        console.log(
+          "%cNunca cole códigos desconhecidos no console.",
+          "color: #facc15; font-size: 14px; font-weight: bold;"
+        );
+      });
+    </script>
+
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
