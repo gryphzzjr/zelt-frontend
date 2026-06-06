@@ -13,6 +13,7 @@ import PaymentSuccess from './pages/PaymentSuccess';
 import PaymentError from './pages/PaymentError';
 import PaymentWarning from './pages/PaymentWarning';
 import DepoimentosPage from './pages/DepoimentosPage';
+import TermsPage from './pages/Terms';
 
 // Componente auxiliar lê o localStorage na hora da renderização
 const ProtectedRoute = ({ children }) => {
@@ -44,6 +45,7 @@ export default function App() {
         <Route path="/pagamento/sucesso" element={<PaymentSuccess />} />
         <Route path="/pagamento/erro" element={<PaymentError />} />
         <Route path="/pagamento/aviso" element={<PaymentWarning />} />
+        <Route path="/termos" element={<TermsPage />} />
 
         {/* Se já tiver logado e tentar ir pro login/register, barra e joga pra dashboard */}
         <Route path="/login" element={!isAuthenticated ? <ZeltLogin /> : <Navigate to="/dashboard" replace />} />

@@ -363,8 +363,8 @@ const PLANS = [
   {
     id: "basic",
     name: "Basic",
-    price: "69",
-    cents: ",99",
+    price: "79",
+    cents: ",90",
     for: "Pequenos negócios",
     highlight: true,
     badge: "Mais popular",
@@ -505,7 +505,7 @@ function CTA() {
             Junte-se às empresas que já automatizaram seu atendimento e multiplicaram suas conversões com o Zelt.AI.
           </p>
           <a href="/register" className="inline-block bg-green-500 hover:bg-green-400 text-black font-semibold rounded-xl px-8 py-4 text-sm transition-all hover:shadow-lg hover:shadow-green-500/25 active:scale-[0.98]">
-            Começar por R$ 69,99/mês →
+            Começar por R$ 79,90/mês →
           </a>
           <p className="mt-4 text-xs text-zinc-300">3 dias grátis · Sem cartão de crédito · Setup em 2 horas</p>
         </div>
