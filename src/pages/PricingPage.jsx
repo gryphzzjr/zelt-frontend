@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import {
   CheckCircle2, ArrowRight, Zap, Star, Building2, HelpCircle,
   MessageCircle, ChevronDown, Sparkles, Shield, Clock, TrendingUp,
-  Lock, Loader2
+  Lock, Loader2,
+  X
 } from "lucide-react";
 import { createCheckout } from "../services/billing";
 import Navbar from "../components/Navbar";
@@ -391,7 +392,6 @@ function PricingSection() {
                       {plan.cta}
                       <ArrowRight className="w-3.5 h-3.5" />
                     </a>
-                  )}
                   )}
                 </div>
 
