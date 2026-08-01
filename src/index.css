@@ -1,0 +1,40 @@
+@import 'tailwindcss';
+
+:root {
+  --zelt-primary: #6300ff;
+  --zelt-primary-rgb: 99, 0, 255;
+  --zelt-primary-hover: #5200d6;
+  --zelt-primary-50: rgba(99, 0, 255, 0.05);
+  --zelt-primary-100: rgba(99, 0, 255, 0.1);
+  --zelt-primary-200: rgba(99, 0, 255, 0.2);
+}
+
+.anim-fade-up {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.anim-fade-up.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.anim-drag-file {
+  opacity: 0;
+  transform: translate(80px, -60px) rotate(-8deg) scale(0.7);
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.anim-drag-file.show {
+  opacity: 1;
+  transform: translate(0, 0) rotate(0deg) scale(1);
+}
+.anim-drag-file.drop {
+  opacity: 0;
+  transform: translate(0, 0) scale(0.5);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+@keyframes orbit-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
