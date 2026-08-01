@@ -4,7 +4,7 @@ import {
   TbBuilding, TbLoader2, TbCheck, TbAlertTriangle, TbX, TbChevronDown
 } from 'react-icons/tb';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://zelt-backend-production.up.railway.app/api/v1';
+const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 function formatCpf(value) {
   const n = value.replace(/\D/g, '').slice(0, 11);

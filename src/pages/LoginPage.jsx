@@ -5,7 +5,7 @@ import { TbArrowRight, TbLock, TbMail } from 'react-icons/tb';
 import ForgotPasswordModal from '../components/ForgotPasswordModal';
 import { useAuth } from '../contexts/AuthContext';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://zelt-backend-production.up.railway.app/api/v1';
+const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');

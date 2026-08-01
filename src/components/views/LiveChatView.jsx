@@ -12,7 +12,7 @@ import { evolutionApi, chatApi } from '../../lib/api';
 function getMediaUrl(mediaPath) {
   if (!mediaPath) return null;
   const token = localStorage.getItem('token');
-  const base = import.meta.env.VITE_API_URL || 'https://zelt-backend-production.up.railway.app/api/v1';
+  const base = import.meta.env.VITE_API_URL || '/api/v1';
   return `${base}${mediaPath}?token=${token}`;
 }
 

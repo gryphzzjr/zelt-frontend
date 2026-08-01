@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || "https://zelt-backend-production.up.railway.app/api/v1";
+const API_URL = import.meta.env.VITE_API_URL || "/api/v1";
 
 function getToken() {
     return localStorage.getItem("token");

@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/Toast';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://zelt-backend-production.up.railway.app/api/v1';
+const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 const ROLE_LABELS = {
   OWNER: 'Proprietário',

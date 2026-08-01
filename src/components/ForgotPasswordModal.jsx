@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TbX, TbMail, TbLock, TbCheck } from 'react-icons/tb';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://zelt-backend-production.up.railway.app/api/v1';
+const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 export default function ForgotPasswordModal({ isOpen, onClose, initialEmail }) {
   const [step, setStep] = useState(1);

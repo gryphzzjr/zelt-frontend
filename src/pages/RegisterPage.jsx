@@ -4,7 +4,7 @@ import { FcGoogle } from 'react-icons/fc';
 import { TbArrowRight, TbLock, TbMail, TbUser } from 'react-icons/tb';
 import { HiOutlineMailOpen, HiOutlineCheckCircle } from 'react-icons/hi';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://zelt-backend-production.up.railway.app/api/v1';
+const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 export default function RegisterPage() {
   const [name, setName] = useState('');

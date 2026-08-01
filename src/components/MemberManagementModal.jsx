@@ -8,7 +8,7 @@ import {
 } from 'react-icons/hi';
 import { useToast } from './Toast';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://zelt-backend-production.up.railway.app/api/v1';
+const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 const ROLE_OPTIONS = [
   { value: 'ADMIN', label: 'Administrador', desc: 'Acesso total ao workspace' },

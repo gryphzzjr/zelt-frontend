@@ -29,7 +29,7 @@ export default function WorkspacesPage() {
   const toast = useToast();
   const isEmployee = user?.accountType === 'EMPLOYEE';
 
-  const API_URL = import.meta.env.VITE_API_URL || 'https://zelt-backend-production.up.railway.app/api/v1';
+  const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
   const [workspaces, setWorkspaces] = useState([]);
   const [loading, setLoading] = useState(true);
