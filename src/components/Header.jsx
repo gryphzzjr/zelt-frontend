@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { HiChevronDown, HiMenu, HiX, HiOutlineCog, HiOutlineLogout, HiOutlineOfficeBuilding, HiOutlineUserCircle } from 'react-icons/hi';
+import { HiChevronDown, HiMenu, HiX, HiOutlineCog, HiOutlineLogout, HiOutlineUserCircle } from 'react-icons/hi';
 import { TbBrain, TbBook, TbCpu, TbRocket, TbShieldCheck, TbMail } from 'react-icons/tb';
 import { useAuth } from '../contexts/AuthContext';
+import TrialProgressBar from './ui/TrialProgressBar';
 
 const NavItem = ({ title, children }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -67,7 +68,7 @@ const MobileNavItem = ({ title, children }) => {
 };
 
 function UserMenu() {
-  const { user, workspace, workspaces, logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
@@ -109,7 +110,7 @@ function UserMenu() {
             {user?.name || 'Usuario'}
           </span>
           <span className="text-[11px] text-gray-400 truncate max-w-[140px] leading-tight">
-            {workspace?.name || 'Workspace'}
+            {user?.email || ''}
           </span>
         </div>
         <HiChevronDown className={`h-4 w-4 text-gray-400 transition-transform duration-200 shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
@@ -122,37 +123,16 @@ function UserMenu() {
             <p className="text-[11px] text-gray-400 truncate mt-0.5">{user?.email || ''}</p>
           </div>
 
-          <div className="py-1">
-            {workspace && (
-              <div className="px-3 py-2">
-                <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1.5">Workspace atual</p>
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded bg-[#6300ff1a] flex items-center justify-center shrink-0">
-                    <HiOutlineOfficeBuilding size={12} className="text-[#6300ff]" />
-                  </div>
-                  <span className="text-[13px] text-gray-700 truncate">{workspace.name}</span>
-                </div>
-              </div>
-            )}
-          </div>
-
           <div className="border-t border-gray-100 py-1">
             <button
-              onClick={() => { setIsOpen(false); navigate(`/workspace/${user?.id}/dashboard`); }}
+              onClick={() => { setIsOpen(false); navigate('/dashboard'); }}
               className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[13px] text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
             >
               <HiOutlineUserCircle size={16} className="text-gray-400" />
               Dashboard
             </button>
             <button
-              onClick={() => { setIsOpen(false); navigate(`/workspace/${user?.id}/workspaces`); }}
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[13px] text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
-            >
-              <HiOutlineOfficeBuilding size={16} className="text-gray-400" />
-              Workspaces
-            </button>
-            <button
-              onClick={() => { setIsOpen(false); navigate(`/workspace/${user?.id}/dashboard?view=configuracoes`); }}
+              onClick={() => { setIsOpen(false); navigate('/dashboard?view=configuracoes'); }}
               className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[13px] text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
             >
               <HiOutlineCog size={16} className="text-gray-400" />
@@ -176,7 +156,7 @@ function UserMenu() {
 }
 
 function MobileAuthenticatedMenu({ onClose }) {
-  const { user, workspace, logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   const initials = (user?.name || 'U')
@@ -212,35 +192,16 @@ function MobileAuthenticatedMenu({ onClose }) {
         </button>
       </div>
 
-      {workspace && (
-        <div className="py-4 border-b border-gray-100">
-          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-2">Workspace</p>
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded bg-[#6300ff1a] flex items-center justify-center shrink-0">
-              <HiOutlineOfficeBuilding size={14} className="text-[#6300ff]" />
-            </div>
-            <span className="text-[14px] text-gray-700">{workspace.name}</span>
-          </div>
-        </div>
-      )}
-
       <nav className="flex flex-col py-4 flex-1">
         <Link
-          to={`/workspace/${user?.id}/dashboard`}
+          to="/dashboard"
           onClick={onClose}
           className="py-3 text-[16px] font-medium text-[#111] border-b border-gray-100"
         >
           Dashboard
         </Link>
         <Link
-          to={`/workspace/${user?.id}/workspaces`}
-          onClick={onClose}
-          className="py-3 text-[16px] font-medium text-[#111] border-b border-gray-100"
-        >
-          Workspaces
-        </Link>
-        <Link
-          to={`/workspace/${user?.id}/dashboard?view=configuracoes`}
+          to="/dashboard?view=configuracoes"
           onClick={onClose}
           className="py-3 text-[16px] font-medium text-[#111] border-b border-gray-100"
         >
@@ -284,7 +245,7 @@ export default function HeaderZelt() {
           <div className="flex h-20 items-center justify-between">
 
             <div className="flex shrink-0 items-center">
-              <Link to={isAuthenticated ? `/workspace/${user?.id || ''}/dashboard` : '/'}>
+              <Link to={isAuthenticated ? '/dashboard' : '/'}>
                 <img src="banner.png" alt="Zelt.AI" className="h-11 w-auto object-contain" />
               </Link>
             </div>
@@ -338,13 +299,14 @@ export default function HeaderZelt() {
               </>
             ) : (
               <div className="flex items-center gap-3">
-                <div className="hidden md:flex items-center gap-2">
+                <div className="hidden md:flex items-center gap-3">
                   <Link
-                    to={`/workspace/${user?.id || ''}/dashboard`}
+                    to="/dashboard"
                     className="rounded border border-gray-200 px-4 py-2 text-[14px] font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors"
                   >
                     Dashboard
                   </Link>
+                  <TrialProgressBar className="hidden md:flex" />
                   <UserMenu />
                 </div>
 

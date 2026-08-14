@@ -62,7 +62,7 @@ export default function GoogleDriveView() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="cards-carousel">
           <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-lg p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-[#4285F4]/10 flex items-center justify-center"><Folder size={18} className="text-[#4285F4]" /></div>
             <div><p className="text-xl text-gray-900 dark:text-[#ededed]">3</p><p className="text-xs text-gray-400 dark:text-[#666]">Pastas</p></div>

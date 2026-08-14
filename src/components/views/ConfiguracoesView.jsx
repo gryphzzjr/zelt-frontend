@@ -1,19 +1,20 @@
 import { useState, useRef, useEffect } from 'react';
 import { onboardingApi } from '../../lib/api';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
+import Pagination from '../../components/ui/Pagination';
 import {
-  Settings, Building2, Briefcase, User, Palette, Bell, Shield,
+  Settings, Building2, User, Palette, Bell, Shield,
   CreditCard, ScrollText, Save, Upload, Trash2, Eye, EyeOff,
-  LogOut, Check, X, AlertTriangle, Clock, Globe,
-  ChevronRight, Lock, Key, Smartphone, Search, Filter,
-  Download, ExternalLink, RefreshCw, Info, ToggleLeft, ToggleRight,
-  Camera, FileText, DollarSign, Calendar, Users, MessageSquare,
-  Zap, Database, Mail, Package,
+  LogOut, Check, X, AlertTriangle,
+  ChevronRight, Key, Smartphone,
+  Download, RefreshCw, ToggleLeft, ToggleRight,
+  Camera, FileText, MessageSquare,
+  Zap, Database, ArrowLeft,
 } from 'lucide-react';
 
 const TABS = [
   { id: 'geral',        label: 'Geral',          icon: Settings },
-  { id: 'workspace',    label: 'Workspace',      icon: Briefcase },
   { id: 'perfil',       label: 'Perfil',         icon: User },
   { id: 'aparencia',    label: 'Aparencia',       icon: Palette },
   { id: 'notificacoes', label: 'Notificacoes',    icon: Bell },
@@ -24,14 +25,14 @@ const TABS = [
 
 const MOCK_LOGS = [
   { id: 1, user: 'Lucas Silva', action: 'Entrou no sistema', timestamp: '16/07/2026 14:32', icon: LogOut, color: 'text-blue-500', bg: 'bg-blue-50' },
-  { id: 2, user: 'Lucas Silva', action: 'Adicionou membro Maria Oliveira', timestamp: '16/07/2026 13:15', icon: Users, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+  { id: 2, user: 'Lucas Silva', action: 'Atualizou o perfil da empresa', timestamp: '16/07/2026 13:15', icon: Building2, color: 'text-emerald-500', bg: 'bg-emerald-50' },
   { id: 3, user: 'Sistema', action: 'Integracao WhatsApp reconectada', timestamp: '16/07/2026 12:48', icon: Zap, color: 'text-[#25D366]', bg: 'bg-[#25D366]/10' },
   { id: 4, user: 'Lucas Silva', action: 'Atualizou Base de Conhecimento', timestamp: '16/07/2026 11:30', icon: Database, color: 'text-purple-500', bg: 'bg-purple-50' },
   { id: 5, user: 'Lucas Silva', action: 'Alterou prompt de atendimento', timestamp: '16/07/2026 10:05', icon: FileText, color: 'text-amber-500', bg: 'bg-amber-50' },
   { id: 6, user: 'Sistema', action: 'Integracao Google Sheets sincronizada', timestamp: '15/07/2026 18:30', icon: RefreshCw, color: 'text-[#0F9D58]', bg: 'bg-[#0F9D58]/10' },
-  { id: 7, user: 'Lucas Silva', action: 'Removeu membro Pedro Costa', timestamp: '15/07/2026 16:20', icon: Trash2, color: 'text-red-500', bg: 'bg-red-50' },
+  { id: 7, user: 'Lucas Silva', action: 'Configurou novo fluxo de resposta automatica', timestamp: '15/07/2026 16:20', icon: MessageSquare, color: 'text-red-500', bg: 'bg-red-50' },
   { id: 8, user: 'Sistema', action: 'Backup automático realizado', timestamp: '15/07/2026 03:00', icon: Shield, color: 'text-gray-400', bg: 'bg-gray-50' },
-  { id: 9, user: 'Lucas Silva', action: 'Criou novo cargo Gerente de Vendas', timestamp: '14/07/2026 09:45', icon: Briefcase, color: 'text-[var(--zelt-primary)]', bg: 'bg-[var(--zelt-primary)]/10' },
+  { id: 9, user: 'Lucas Silva', action: 'Publicou novo conteudo na base de conhecimento', timestamp: '14/07/2026 09:45', icon: FileText, color: 'text-[var(--zelt-primary)]', bg: 'bg-[var(--zelt-primary)]/10' },
   { id: 10, user: 'Lucas Silva', action: 'Configurou webhook Mercado Pago', timestamp: '14/07/2026 08:10', icon: CreditCard, color: 'text-[#009EE3]', bg: 'bg-[#009EE3]/10' },
 ];
 
@@ -41,22 +42,124 @@ const MOCK_SESSIONS = [
 ];
 
 const MOCK_PAYMENTS = [
-  { id: 1, date: '01/07/2026', amount: 'R$ 149,90', status: 'Pago', plan: 'Pro' },
-  { id: 2, date: '01/06/2026', amount: 'R$ 149,90', status: 'Pago', plan: 'Pro' },
-  { id: 3, date: '01/05/2026', amount: 'R$ 99,90', status: 'Pago', plan: 'Basico' },
+  { id: 1, date: '01/08/2026', amount: 'R$ 149,00', status: 'Pago', plan: 'Professional' },
+  { id: 2, date: '01/07/2026', amount: 'R$ 149,00', status: 'Pago', plan: 'Professional' },
+  { id: 3, date: '01/06/2026', amount: 'R$ 149,00', status: 'Pago', plan: 'Professional' },
+  { id: 4, date: '01/05/2026', amount: 'R$ 149,00', status: 'Pago', plan: 'Professional' },
+  { id: 5, date: '01/04/2026', amount: 'R$ 149,00', status: 'Pago', plan: 'Professional' },
+  { id: 6, date: '01/03/2026', amount: 'R$ 149,00', status: 'Pago', plan: 'Professional' },
+  { id: 7, date: '01/02/2026', amount: 'R$ 149,00', status: 'Pago', plan: 'Professional' },
+  { id: 8, date: '01/01/2026', amount: 'R$ 149,00', status: 'Pago', plan: 'Professional' },
+  { id: 9, date: '01/12/2025', amount: 'R$ 149,00', status: 'Pago', plan: 'Professional' },
+  { id: 10, date: '01/11/2025', amount: 'R$ 149,00', status: 'Pago', plan: 'Professional' },
+  { id: 11, date: '01/10/2025', amount: 'R$ 149,00', status: 'Pago', plan: 'Professional' },
+  { id: 12, date: '01/09/2025', amount: 'R$ 149,00', status: 'Pago', plan: 'Professional' },
+  { id: 13, date: '01/08/2025', amount: 'R$ 0,00', status: 'Trial', plan: 'Professional' },
 ];
 
-export default function ConfiguracoesView() {
+const CONFIG_STYLE = `
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300;1,9..40,400&display=swap');
+  .config-view * { font-family: 'DM Sans', system-ui, sans-serif; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  .config-fade { animation: fadeIn 0.2s ease-out; }
+  .config-fullscreen .config-tab-head { display: none; }
+`;
+
+function renderTab(id) {
+  switch (id) {
+    case 'geral': return <GeralTab />;
+    case 'perfil': return <PerfilTab />;
+    case 'aparencia': return <AparenciaTab />;
+    case 'notificacoes': return <NotificacoesTab />;
+    case 'seguranca': return <SegurancaTab />;
+    case 'cobranca': return <CobrancaTab />;
+    case 'logs': return <LogsTab />;
+    default: return null;
+  }
+}
+
+export default function ConfiguracoesView({ onBack, fullscreen = false }) {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('geral');
+  const [mobileSection, setMobileSection] = useState(null);
+
+  if (fullscreen) {
+    const section = TABS.find((t) => t.id === mobileSection);
+    return (
+      <>
+        <style>{CONFIG_STYLE}</style>
+        <div className="config-view config-fullscreen flex flex-col h-[100dvh] bg-gray-50/60 dark:bg-[#050505]">
+          <div className="shrink-0 bg-white/85 dark:bg-[#0a0a0a]/85 backdrop-blur-xl border-b border-gray-100 dark:border-white/[0.06]">
+            <div className="flex items-center gap-3 px-3 h-14">
+              <button
+                onClick={() => (mobileSection ? setMobileSection(null) : onBack?.())}
+                className="p-2 -ml-1 rounded border border-gray-200 dark:border-white/[0.08] text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                aria-label="Voltar"
+              >
+                <ArrowLeft size={18} />
+              </button>
+              <div className="min-w-0 flex-1">
+                {section ? (
+                  <>
+                    <h1 className="text-sm font-semibold text-gray-900 dark:text-[#ededed] truncate">{section.label}</h1>
+                    <p className="text-[10px] text-gray-400 dark:text-[#666] truncate">Configuracoes</p>
+                  </>
+                ) : (
+                  <h1 className="text-sm font-semibold text-gray-900 dark:text-[#ededed]">Configuracoes</h1>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            {section ? (
+              <div key={section.id} className="p-4 space-y-5 config-fade">
+                {renderTab(section.id)}
+              </div>
+            ) : (
+              <div className="p-4 space-y-5">
+                <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-xl p-4 flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[var(--zelt-primary)] to-purple-400 flex items-center justify-center text-white text-base font-bold shrink-0">
+                    {(user?.name || 'U').charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-[#ededed] truncate">{user?.name || 'Usuario'}</p>
+                    <p className="text-[10px] text-gray-400 dark:text-[#666] truncate">{user?.email || 'usuario@zelt.ai'}</p>
+                  </div>
+                  <span className="shrink-0 text-[9px] px-2 py-1 rounded-full bg-[var(--zelt-primary)]/10 text-[var(--zelt-primary)] border border-[var(--zelt-primary)]/20">
+                    Professional
+                  </span>
+                </div>
+
+                <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-xl overflow-hidden divide-y divide-gray-100 dark:divide-white/[0.06]">
+                  {TABS.map((tab) => {
+                    const Icon = tab.icon;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => setMobileSection(tab.id)}
+                        className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50 dark:active:bg-white/5 transition-colors text-left"
+                      >
+                        <span className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-gray-400 flex items-center justify-center shrink-0">
+                          <Icon size={16} />
+                        </span>
+                        <span className="flex-1 min-w-0 text-[13px] font-medium text-gray-900 dark:text-[#ededed]">{tab.label}</span>
+                        <ChevronRight size={15} className="text-gray-300 dark:text-[#555] shrink-0" />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300;1,9..40,400&display=swap');
-        .config-view * { font-family: 'DM Sans', system-ui, sans-serif; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-        .config-fade { animation: fadeIn 0.2s ease-out; }
-      `}</style>
+      <style>{CONFIG_STYLE}</style>
       <div className="config-view">
         <div className="flex gap-6 min-h-[calc(100vh-120px)]">
 
@@ -78,14 +181,7 @@ export default function ConfiguracoesView() {
           </div>
 
           <div className="flex-1 min-w-0 config-fade" key={activeTab}>
-            {activeTab === 'geral' && <GeralTab />}
-            {activeTab === 'workspace' && <WorkspaceTab />}
-            {activeTab === 'perfil' && <PerfilTab />}
-            {activeTab === 'aparencia' && <AparenciaTab />}
-            {activeTab === 'notificacoes' && <NotificacoesTab />}
-            {activeTab === 'seguranca' && <SegurancaTab />}
-            {activeTab === 'cobranca' && <CobrancaTab />}
-            {activeTab === 'logs' && <LogsTab />}
+            {renderTab(activeTab)}
           </div>
 
         </div>
@@ -168,8 +264,8 @@ function Toast({ message, type = 'success', onClose }) {
 
 function ConfirmModal({ title, message, onConfirm, onCancel, danger }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onCancel}>
-      <div className="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/[0.06] rounded-xl w-[420px] p-6 config-fade" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4" onClick={onCancel}>
+      <div className="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/[0.06] rounded-t-2xl sm:rounded-xl w-full max-w-[420px] p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] config-fade" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3 mb-4">
           <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${danger ? 'bg-red-50 dark:bg-red-900/20' : 'bg-amber-50 dark:bg-amber-900/20'}`}>
             <AlertTriangle size={18} className={danger ? 'text-red-500' : 'text-amber-500'} />
@@ -177,7 +273,7 @@ function ConfirmModal({ title, message, onConfirm, onCancel, danger }) {
           <h3 className="text-base text-gray-900 dark:text-[#ededed]">{title}</h3>
         </div>
         <p className="text-sm text-gray-500 dark:text-[#808080] mb-5">{message}</p>
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
           <button onClick={onCancel} className="px-4 py-2 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg text-gray-600 dark:text-[#ccc] hover:bg-gray-50 dark:hover:bg-[#222] transition-colors">Cancelar</button>
           <button onClick={onConfirm} className={`px-4 py-2 text-sm text-white rounded-lg transition-colors ${danger ? 'bg-red-500 hover:bg-red-600' : 'bg-[var(--zelt-primary)] hover:opacity-90'}`}>Confirmar</button>
         </div>
@@ -187,28 +283,25 @@ function ConfirmModal({ title, message, onConfirm, onCancel, danger }) {
 }
 
 function GeralTab() {
-  const [form, setForm] = useState({ empresa: 'Zelt.AI', workspace: 'Workspace Principal', fusoHorario: 'America/Sao_Paulo', idioma: 'pt-BR', formatoData: 'DD/MM/YYYY', formatoHora: '24h' });
+  const [form, setForm] = useState({ empresa: 'Zelt.AI', fusoHorario: 'America/Sao_Paulo', idioma: 'pt-BR', formatoData: 'DD/MM/YYYY', formatoHora: '24h' });
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
   const [logo, setLogo] = useState(null);
   const logoRef = useRef(null);
 
-  const handleSave = () => { setSaving(true); setTimeout(() => { setSaving(false); setToast('Configuracoes salvas com sucesso'); }, 1200); };
+  const handleSave = () => { setSaving(true); setTimeout(async () => { setSaving(false); setToast('Configuracoes salvas com sucesso'); try { await onboardingApi.completeStep('settings'); } catch {} }, 1200); };
 
   return (
     <div className="space-y-5">
-      <div>
+      <div className="config-tab-head">
         <h2 className="text-lg text-gray-900 dark:text-[#ededed]">Geral</h2>
-        <p className="text-sm text-gray-400 dark:text-[#666] mt-0.5">Configuracoes gerais do workspace</p>
+        <p className="text-sm text-gray-400 dark:text-[#666] mt-0.5">Configuracoes gerais da plataforma</p>
       </div>
 
       <Section title="Dados da Empresa" description="Informacoes basicas da organizacao">
         <div className="space-y-4">
           <Field label="Nome da Empresa">
             <Input value={form.empresa} onChange={(e) => setForm(p => ({ ...p, empresa: e.target.value }))} placeholder="Nome da empresa" />
-          </Field>
-          <Field label="Nome do Workspace">
-            <Input value={form.workspace} onChange={(e) => setForm(p => ({ ...p, workspace: e.target.value }))} placeholder="Nome do workspace" />
           </Field>
           <Field label="Logotipo da Empresa">
             <div className="flex items-center gap-4">
@@ -233,7 +326,7 @@ function GeralTab() {
       </Section>
 
       <Section title="Localizacao e Idioma">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Fuso Horario">
             <Select value={form.fusoHorario} onChange={(e) => setForm(p => ({ ...p, fusoHorario: e.target.value }))}>
               <option value="America/Sao_Paulo">America/Sao_Paulo (GMT-3)</option>
@@ -271,94 +364,8 @@ function GeralTab() {
   );
 }
 
-function WorkspaceTab() {
-  const [form, setForm] = useState({ nome: 'Workspace Principal', identificador: 'ws_lucas_zelt_01' });
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState(null);
-
-  const handleSave = () => { setSaving(true); setTimeout(async () => { setSaving(false); setToast('Workspace atualizado'); try { await onboardingApi.completeStep('settings'); } catch {} }, 1000); };
-
-  return (
-    <div className="space-y-5">
-      <div>
-        <h2 className="text-lg text-gray-900 dark:text-[#ededed]">Workspace</h2>
-        <p className="text-sm text-gray-400 dark:text-[#666] mt-0.5">Informacoes e configuracoes do workspace</p>
-      </div>
-
-      <Section title="Informacoes do Workspace" description="Dados gerais e identificacao">
-        <div className="grid grid-cols-2 gap-4 mb-5">
-          <div className="p-3 rounded-lg border border-gray-100 dark:border-white/[0.06]">
-            <p className="text-xs text-gray-400 dark:text-[#666]">Nome</p>
-            <p className="text-sm text-gray-700 dark:text-[#ccc] mt-0.5">{form.nome}</p>
-          </div>
-          <div className="p-3 rounded-lg border border-gray-100 dark:border-white/[0.06]">
-            <p className="text-xs text-gray-400 dark:text-[#666]">Identificador</p>
-            <code className="text-sm text-gray-700 dark:text-[#ccc] mt-0.5 block font-mono">{form.identificador}</code>
-          </div>
-          <div className="p-3 rounded-lg border border-gray-100 dark:border-white/[0.06]">
-            <p className="text-xs text-gray-400 dark:text-[#666]">Criado em</p>
-            <p className="text-sm text-gray-700 dark:text-[#ccc] mt-0.5">10/07/2026</p>
-          </div>
-          <div className="p-3 rounded-lg border border-gray-100 dark:border-white/[0.06]">
-            <p className="text-xs text-gray-400 dark:text-[#666]">Plano atual</p>
-            <p className="text-sm text-[var(--zelt-primary)] mt-0.5">Pro</p>
-          </div>
-          <div className="p-3 rounded-lg border border-gray-100 dark:border-white/[0.06]">
-            <p className="text-xs text-gray-400 dark:text-[#666]">Membros</p>
-            <p className="text-sm text-gray-700 dark:text-[#ccc] mt-0.5">4</p>
-          </div>
-          <div className="p-3 rounded-lg border border-gray-100 dark:border-white/[0.06]">
-            <p className="text-xs text-gray-400 dark:text-[#666]">Clientes</p>
-            <p className="text-sm text-gray-700 dark:text-[#ccc] mt-0.5">127</p>
-          </div>
-        </div>
-        {<SaveButton onClick={handleSave} saving={saving} />}
-      </Section>
-
-      <Section title="Editar Workspace">
-        <div className="space-y-4">
-          <Field label="Nome do Workspace">
-            <Input value={form.nome} onChange={(e) => setForm(p => ({ ...p, nome: e.target.value }))} />
-          </Field>
-          <Field label="Logotipo">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-xl border border-gray-200 dark:border-white/[0.06] bg-gray-50 dark:bg-[#1a1a1a] flex items-center justify-center">
-                <Briefcase size={20} className="text-gray-300 dark:text-[#555]" />
-              </div>
-              <button className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg text-gray-600 dark:text-[#ccc] hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors">
-                <Upload size={14} /> Alterar logotipo
-              </button>
-            </div>
-          </Field>
-        </div>
-        {<SaveButton onClick={handleSave} saving={saving} />}
-      </Section>
-
-      <div className="bg-white dark:bg-[#141414] border border-red-200 dark:border-red-800/40 rounded-xl p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-base text-red-600 dark:text-red-400">Zona de perigo</h3>
-            <p className="text-sm text-gray-400 dark:text-[#666] mt-0.5">Acoes irreversiveis do workspace</p>
-          </div>
-          <button onClick={() => setConfirmDelete(true)} className="flex items-center gap-2 px-4 py-2 text-sm border border-red-200 dark:border-red-800/40 text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors">
-            <Trash2 size={14} /> Excluir Workspace
-          </button>
-        </div>
-      </div>
-
-      {confirmDelete && (
-        <ConfirmModal title="Excluir Workspace" danger
-          message="Tem certeza que deseja excluir este Workspace? Todos os dados, membros e configuracoes serao perdidos permanentemente. Esta acao nao pode ser desfeita."
-          onConfirm={() => { setConfirmDelete(false); setToast('Workspace excluido'); }} onCancel={() => setConfirmDelete(false)} />
-      )}
-      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
-    </div>
-  );
-}
-
 function PerfilTab() {
-  const [form, setForm] = useState({ nome: 'Lucas Silva', email: 'lucas@zelt.ai', telefone: '(81) 99999-1111', cargo: 'Administrador', idioma: 'pt-BR' });
+  const [form, setForm] = useState({ nome: 'Lucas Silva', email: 'lucas@zelt.ai', telefone: '(81) 99999-1111', idioma: 'pt-BR' });
   const [avatar, setAvatar] = useState(null);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
@@ -369,7 +376,7 @@ function PerfilTab() {
 
   return (
     <div className="space-y-5">
-      <div>
+      <div className="config-tab-head">
         <h2 className="text-lg text-gray-900 dark:text-[#ededed]">Perfil</h2>
         <p className="text-sm text-gray-400 dark:text-[#666] mt-0.5">Gerencie seus dados pessoais</p>
       </div>
@@ -394,7 +401,7 @@ function PerfilTab() {
       </Section>
 
       <Section title="Dados Pessoais" footer={<SaveButton onClick={handleSave} saving={saving} />}>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Nome completo">
             <Input value={form.nome} onChange={(e) => setForm(p => ({ ...p, nome: e.target.value }))} />
           </Field>
@@ -403,9 +410,6 @@ function PerfilTab() {
           </Field>
           <Field label="Telefone">
             <Input value={form.telefone} onChange={(e) => setForm(p => ({ ...p, telefone: e.target.value }))} />
-          </Field>
-          <Field label="Cargo">
-            <Input value={form.cargo} readOnly />
           </Field>
           <Field label="Idioma">
             <Select value={form.idioma} onChange={(e) => setForm(p => ({ ...p, idioma: e.target.value }))}>
@@ -448,8 +452,8 @@ function ChangePasswordModal({ onClose, onDone }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div className="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/[0.06] rounded-xl w-[440px] p-6 config-fade" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/[0.06] rounded-t-2xl sm:rounded-xl w-full max-w-[440px] p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] config-fade" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-base text-gray-900 dark:text-[#ededed]">Alterar senha</h3>
           <button onClick={onClose} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-[#222] text-gray-400 hover:text-gray-600 dark:hover:text-[#ccc] transition-colors"><X size={16} /></button>
@@ -496,13 +500,13 @@ function AparenciaTab() {
 
   return (
     <div className="space-y-5">
-      <div>
+      <div className="config-tab-head">
         <h2 className="text-lg text-gray-900">Aparencia</h2>
         <p className="text-sm text-gray-400 mt-0.5">Personalize a cor da interface</p>
       </div>
 
       <Section title="Cor Principal" description="Selecione a cor predominante da interface">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {COLORS.map(c => (
             <button key={c} onClick={() => setPrimaryColor(c)}
               className={`w-10 h-10 rounded-xl transition-all ${primaryColor === c ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : 'hover:scale-105'}`}
@@ -537,7 +541,7 @@ function AparenciaTab() {
 
 function NotificacoesTab() {
   const [prefs, setPrefs] = useState({
-    novasConversas: true, novasTarefas: true, convites: true,
+    novasConversas: true, novasTarefas: true,
     atualizacoes: true, errosIntegracao: true,
   });
   const [saving, setSaving] = useState(false);
@@ -548,15 +552,14 @@ function NotificacoesTab() {
 
   const items = [
     { key: 'novasConversas', label: 'Novas conversas', description: 'Receber alerta quando um cliente iniciar uma conversa' },
-    { key: 'novasTarefas', label: 'Novas tarefas', description: 'Receber notificacao quando uma tarefa for atribuida a voce' },
-    { key: 'convites', label: 'Convites', description: 'Receber alerta quando for convidado para um workspace' },
+    { key: 'novasTarefas', label: 'Novas tarefas', description: 'Receber notificacao quando uma nova tarefa for criada' },
     { key: 'atualizacoes', label: 'Atualizacoes importantes', description: 'Notificacoes sobre atualizacoes da plataforma e novos recursos' },
     { key: 'errosIntegracao', label: 'Erros de integracao', description: 'Alertas quando uma integracao falhar ou perder conexao' },
   ];
 
   return (
     <div className="space-y-5">
-      <div>
+      <div className="config-tab-head">
         <h2 className="text-lg text-gray-900 dark:text-[#ededed]">Notificacoes</h2>
         <p className="text-sm text-gray-400 dark:text-[#666] mt-0.5">Controle quais notificacoes deseja receber</p>
       </div>
@@ -586,7 +589,7 @@ function SegurancaTab() {
 
   return (
     <div className="space-y-5">
-      <div>
+      <div className="config-tab-head">
         <h2 className="text-lg text-gray-900 dark:text-[#ededed]">Seguranca</h2>
         <p className="text-sm text-gray-400 dark:text-[#666] mt-0.5">Protecao da sua conta e dados</p>
       </div>
@@ -644,7 +647,7 @@ function SegurancaTab() {
         </div>
       </Section>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-xl p-4">
           <p className="text-xs text-gray-400 dark:text-[#666] mb-1">Ultimo acesso</p>
           <p className="text-sm text-gray-700 dark:text-[#ccc]">16/07/2026 14:32</p>
@@ -664,11 +667,16 @@ function SegurancaTab() {
 
 function CobrancaTab() {
   const [toast, setToast] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 8;
+  const pageCount = Math.max(1, Math.ceil(MOCK_PAYMENTS.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, pageCount);
+  const paginatedPayments = MOCK_PAYMENTS.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   return (
     <div className="space-5">
       <style>{`.space-5 > * + * { margin-top: 1.25rem; }`}</style>
-      <div>
+      <div className="config-tab-head">
         <h2 className="text-lg text-gray-900 dark:text-[#ededed]">Cobranca</h2>
         <p className="text-sm text-gray-400 dark:text-[#666] mt-0.5">Gerencie assinatura e pagamentos</p>
       </div>
@@ -679,12 +687,12 @@ function CobrancaTab() {
             <h3 className="text-base text-gray-900 dark:text-[#ededed]">Plano Atual</h3>
             <p className="text-sm text-gray-400 dark:text-[#666] mt-0.5">Seu plano e renovado automaticamente</p>
           </div>
-          <span className="text-xs px-2.5 py-1 rounded-full bg-[var(--zelt-primary)]/10 text-[var(--zelt-primary)] border border-[var(--zelt-primary)]/20">Pro</span>
+          <span className="text-xs px-2.5 py-1 rounded-full bg-[var(--zelt-primary)]/10 text-[var(--zelt-primary)] border border-[var(--zelt-primary)]/20">Professional</span>
         </div>
-        <div className="grid grid-cols-3 gap-4 mb-5">
+        <div className="cards-carousel mb-5">
           <div className="p-3 rounded-lg border border-gray-100 dark:border-white/[0.06]">
             <p className="text-xs text-gray-400 dark:text-[#666]">Valor mensal</p>
-            <p className="text-lg text-gray-900 dark:text-[#ededed] mt-0.5">R$ 149,90</p>
+            <p className="text-lg text-gray-900 dark:text-[#ededed] mt-0.5">R$ 149,00</p>
           </div>
           <div className="p-3 rounded-lg border border-gray-100 dark:border-white/[0.06]">
             <p className="text-xs text-gray-400 dark:text-[#666]">Proxima cobranca</p>
@@ -698,11 +706,11 @@ function CobrancaTab() {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button className="flex items-center gap-2 px-4 py-2.5 text-sm bg-[var(--zelt-primary)] text-white rounded-lg hover:opacity-90 transition-colors">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <button className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm bg-[var(--zelt-primary)] text-white rounded-lg hover:opacity-90 transition-colors">
             <Zap size={14} /> Alterar Plano
           </button>
-          <button className="flex items-center gap-2 px-4 py-2.5 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg text-gray-600 dark:text-[#ccc] hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors">
+          <button className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg text-gray-600 dark:text-[#ccc] hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors">
             <CreditCard size={14} /> Atualizar Forma de Pagamento
           </button>
         </div>
@@ -712,7 +720,7 @@ function CobrancaTab() {
         <div className="px-6 py-4 border-b border-gray-100 dark:border-white/[0.06]">
           <h3 className="text-base text-gray-900 dark:text-[#ededed]">Historico de Pagamentos</h3>
         </div>
-        <table className="w-full">
+        <table className="w-full table-stack">
           <thead className="bg-gray-50 dark:bg-[#111] border-b border-gray-100 dark:border-white/[0.06]">
             <tr>
               <th className="px-6 py-3 text-left text-xs text-gray-400 dark:text-[#666] uppercase tracking-wider">Data</th>
@@ -723,15 +731,15 @@ function CobrancaTab() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50 dark:divide-white/[0.06]">
-            {MOCK_PAYMENTS.map(p => (
+            {paginatedPayments.map(p => (
               <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-[#1a1a1a]/50 transition-colors">
-                <td className="px-6 py-3 text-sm text-gray-700 dark:text-[#ccc]">{p.date}</td>
-                <td className="px-6 py-3 text-sm text-gray-600 dark:text-[#aaa]">{p.plan}</td>
-                <td className="px-6 py-3 text-sm text-gray-700 dark:text-[#ccc]">{p.amount}</td>
-                <td className="px-6 py-3">
+                <td className="px-6 py-3 text-sm text-gray-700 dark:text-[#ccc]" data-label="Data">{p.date}</td>
+                <td className="px-6 py-3 text-sm text-gray-600 dark:text-[#aaa]" data-label="Plano">{p.plan}</td>
+                <td className="px-6 py-3 text-sm text-gray-700 dark:text-[#ccc]" data-label="Valor">{p.amount}</td>
+                <td className="px-6 py-3" data-label="Status">
                   <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/40">{p.status}</span>
                 </td>
-                <td className="px-6 py-3">
+                <td className="px-6 py-3" data-label="Acoes">
                   <button className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-[#222] text-gray-400 hover:text-gray-600 transition-colors">
                     <Download size={14} />
                   </button>
@@ -740,6 +748,7 @@ function CobrancaTab() {
             ))}
           </tbody>
         </table>
+        <Pagination page={safePage} totalPages={pageCount} onPageChange={setCurrentPage} total={MOCK_PAYMENTS.length} pageSize={PAGE_SIZE} label="pagamentos" />
       </div>
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
@@ -756,38 +765,77 @@ function LogsTab() {
 
   const filtered = logs.filter(l => {
     const matchUser = filterUser === 'all' || l.user === filterUser;
-    return matchUser;
+    if (!matchUser || filterDate === 'all') return matchUser;
+    const [dd, mm, yyyy] = l.timestamp.slice(0, 10).split('/');
+    const logDate = new Date(yyyy, mm - 1, dd);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (filterDate === 'today') return logDate.getTime() === today.getTime();
+    if (filterDate === 'week') return logDate >= today && logDate <= new Date(today.getTime() + 6 * 86400000);
+    if (filterDate === 'month') return logDate >= today && logDate <= new Date(today.getTime() + 29 * 86400000);
+    return true;
   });
 
   return (
     <div className="space-5">
       <style>{`.space-5 > * + * { margin-top: 1.25rem; }`}</style>
-      <div>
+      <div className="config-tab-head">
         <h2 className="text-lg text-gray-900 dark:text-[#ededed]">Logs do Sistema</h2>
-        <p className="text-sm text-gray-400 dark:text-[#666] mt-0.5">Historico de acoes realizadas no workspace</p>
+        <p className="text-sm text-gray-400 dark:text-[#666] mt-0.5">Historico de acoes realizadas na plataforma</p>
       </div>
 
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1.5 bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-lg p-1">
-          <div className="relative">
-            <select value={filterUser} onChange={(e) => setFilterUser(e.target.value)}
-              className="appearance-none pl-8 pr-8 py-2 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg bg-white dark:bg-[#1a1a1a] text-gray-600 dark:text-[#ccc] focus:border-[var(--zelt-primary)]/40 transition-colors cursor-pointer">
-              <option value="all">Todos os usuarios</option>
-              {users.map(u => <option key={u} value={u}>{u}</option>)}
-            </select>
-            <Users size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-[#666] pointer-events-none" />
-          </div>
-          <div className="relative">
-            <select value={filterDate} onChange={(e) => setFilterDate(e.target.value)}
-              className="appearance-none pl-8 pr-8 py-2 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg bg-white dark:bg-[#1a1a1a] text-gray-600 dark:text-[#ccc] focus:border-[var(--zelt-primary)]/40 transition-colors cursor-pointer">
-              <option value="all">Todos os periodos</option>
-              <option value="today">Hoje</option>
-              <option value="week">Esta semana</option>
-              <option value="month">Este mes</option>
-            </select>
-            <Calendar size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-[#666] pointer-events-none" />
-          </div>
-        </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <button onClick={() => setFilterUser('all')}
+          className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+            filterUser === 'all'
+              ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+              : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+          }`}>
+          Todos os usuarios
+        </button>
+        {users.map(u => (
+          <button key={u} onClick={() => setFilterUser(u)}
+            className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+              filterUser === u
+                ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+                : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+            }`}>
+            {u}
+          </button>
+        ))}
+        <span className="w-px h-4 bg-gray-200 dark:bg-white/[0.08] mx-1.5" />
+        <button onClick={() => setFilterDate('all')}
+          className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+            filterDate === 'all'
+              ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+              : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+          }`}>
+          Todos os periodos
+        </button>
+        <button onClick={() => setFilterDate('today')}
+          className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+            filterDate === 'today'
+              ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+              : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+          }`}>
+          Hoje
+        </button>
+        <button onClick={() => setFilterDate('week')}
+          className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+            filterDate === 'week'
+              ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+              : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+          }`}>
+          Esta semana
+        </button>
+        <button onClick={() => setFilterDate('month')}
+          className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+            filterDate === 'month'
+              ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+              : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+          }`}>
+          Este mes
+        </button>
       </div>
 
       <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-xl overflow-hidden">

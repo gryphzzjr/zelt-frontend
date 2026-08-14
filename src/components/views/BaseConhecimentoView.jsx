@@ -3,10 +3,9 @@ import {
   Search, Plus, FileText, Folder, MoreHorizontal, Pencil,
   Trash2, Eye, EyeOff, Clock, X, Check,
   Upload, File, LayoutGrid, List, Star, Archive,
-  Copy, ArrowUpDown, AlertCircle, SlidersHorizontal, BookOpen,
+  Copy, AlertCircle, SlidersHorizontal, BookOpen,
 } from 'lucide-react';
 import { knowledgeApi } from '../../lib/api';
-import { useAuth } from '../../contexts/AuthContext';
 
 const CATEGORIES = [
   { id: 'all', label: 'Todos' },
@@ -73,8 +72,6 @@ function mapFrontendType(type) {
 }
 
 export default function BaseConhecimentoView() {
-  const { workspace } = useAuth();
-  const workspaceId = workspace?.id;
 
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
@@ -101,29 +98,27 @@ export default function BaseConhecimentoView() {
   };
 
   const fetchItems = async () => {
-    if (!workspaceId) return;
     try {
-      const res = await knowledgeApi.list(workspaceId);
+      const res = await knowledgeApi.list();
       if (res.success) {
         const mapped = res.items.map(mapBackendItem);
         setContents(mapped);
         setHasData(mapped.length > 0);
       }
-    } catch (err) {
+    } catch {
       showToast('Erro ao carregar conteudos', 'error');
     }
   };
 
   const fetchStats = async () => {
-    if (!workspaceId) return;
     try {
-      const res = await knowledgeApi.stats(workspaceId);
+      const res = await knowledgeApi.stats();
       if (res.success) {
         const s = res.stats;
         const totalUsage = s.byCategory ? Object.values(s.byCategory).reduce((sum, cat) => sum + (cat.usageCount || 0), 0) : 0;
         setStats({ total: s.total, active: s.active, inactive: s.inactive, totalUsage });
       }
-    } catch (err) {
+    } catch {
       showToast('Erro ao carregar estatisticas', 'error');
     }
   };
@@ -136,7 +131,7 @@ export default function BaseConhecimentoView() {
 
   useEffect(() => {
     fetchAll();
-  }, [workspaceId]);
+  }, []);
 
   useEffect(() => {
     const handleClick = (e) => {
@@ -166,10 +161,10 @@ export default function BaseConhecimentoView() {
   const handleDelete = async (item) => {
     setMenuOpen(null);
     try {
-      await knowledgeApi.delete(workspaceId, item.id);
+      await knowledgeApi.delete( item.id);
       showToast('Conteudo excluido com sucesso');
       fetchAll();
-    } catch (err) {
+    } catch {
       showToast('Erro ao excluir conteudo', 'error');
     }
   };
@@ -178,19 +173,19 @@ export default function BaseConhecimentoView() {
     setMenuOpen(null);
     try {
       const newStatus = item.status === 'active' ? 'INACTIVE' : 'ACTIVE';
-      await knowledgeApi.update(workspaceId, item.id, { status: newStatus });
+      await knowledgeApi.update( item.id, { status: newStatus });
       showToast(item.status === 'active' ? 'Conteudo desativado' : 'Conteudo ativado');
       fetchAll();
-    } catch (err) {
+    } catch {
       showToast('Erro ao alterar status', 'error');
     }
   };
 
   const handleToggleFavorite = async (item) => {
     try {
-      await knowledgeApi.update(workspaceId, item.id, { favorite: !item.favorite });
+      await knowledgeApi.update( item.id, { favorite: !item.favorite });
       fetchItems();
-    } catch (err) {
+    } catch {
       showToast('Erro ao alterar favorito', 'error');
     }
   };
@@ -214,11 +209,11 @@ export default function BaseConhecimentoView() {
         category: editForm.category,
         tags: editForm.tags.split(',').map(t => t.trim()).filter(Boolean),
       };
-      await knowledgeApi.update(workspaceId, editingItem.id, payload);
+      await knowledgeApi.update( editingItem.id, payload);
       setEditingItem(null);
       showToast('Conteudo atualizado com sucesso');
       fetchAll();
-    } catch (err) {
+    } catch {
       showToast('Erro ao atualizar conteudo', 'error');
     }
   };
@@ -232,10 +227,10 @@ export default function BaseConhecimentoView() {
       formData.append('type', mapFrontendType(item.type));
       formData.append('status', 'ACTIVE');
       formData.append('tags', JSON.stringify(item.tags || []));
-      await knowledgeApi.create(workspaceId, formData);
+      await knowledgeApi.create(formData);
       showToast('Conteudo duplicado com sucesso');
       fetchAll();
-    } catch (err) {
+    } catch {
       showToast('Erro ao duplicar conteudo', 'error');
     }
   };
@@ -243,10 +238,10 @@ export default function BaseConhecimentoView() {
   const handleArchive = async (item) => {
     try {
       const newStatus = item.status === 'inactive' ? 'ACTIVE' : 'INACTIVE';
-      await knowledgeApi.update(workspaceId, item.id, { status: newStatus });
+      await knowledgeApi.update( item.id, { status: newStatus });
       showToast(item.status === 'inactive' ? 'Conteudo ativado' : 'Conteudo desativado');
       fetchAll();
-    } catch (err) {
+    } catch {
       showToast('Erro ao alterar status', 'error');
     }
   };
@@ -307,7 +302,7 @@ export default function BaseConhecimentoView() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-3 mb-5">
+        <div className="cards-carousel mb-5" style={{ '--cols': 4 }}>
           {[
             { label: 'Total', value: stats.total, icon: FileText, color: '#7C3AED' },
             { label: 'Ativos', value: stats.active, icon: Eye, color: '#10B981' },
@@ -458,15 +453,20 @@ export default function BaseConhecimentoView() {
         <div className="flex items-center justify-between mb-3">
           <span className="text-[10px] text-gray-400 dark:text-[#666]">{filtered.length} conteudos encontrados</span>
           <div className="flex items-center gap-2">
-            <div className="relative">
-              <select
-                value={sortBy}
-                onChange={e => setSortBy(e.target.value)}
-                className="appearance-none pl-2.5 pr-6 py-1 text-[11px] border border-gray-200/60 rounded-lg bg-white dark:bg-[#141414] text-gray-600 dark:text-[#aaa] outline-none cursor-pointer"
-              >
-                {SORT_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
-              </select>
-              <ArrowUpDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-[#666] pointer-events-none" />
+            <div className="flex items-center gap-1">
+              {SORT_OPTIONS.map(o => (
+                <button
+                  key={o.id}
+                  onClick={() => setSortBy(o.id)}
+                  className={`px-2 py-1 text-[10px] rounded-lg border transition-colors ${
+                    sortBy === o.id
+                      ? 'bg-[#7C3AED]/8 text-[#7C3AED] border-[#7C3AED]/20'
+                      : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200/60 hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+                  }`}
+                >
+                  {o.label}
+                </button>
+              ))}
             </div>
             <div className="flex border border-gray-200/60 rounded-lg overflow-hidden">
               <button onClick={() => setViewMode('list')} className={`p-1.5 transition-colors ${viewMode === 'list' ? 'bg-[#7C3AED]/8 text-[#7C3AED]' : 'text-gray-400 dark:text-[#666] hover:bg-gray-50 dark:bg-[#111] dark:hover:bg-[#1a1a1a]'}`}>
@@ -572,7 +572,7 @@ export default function BaseConhecimentoView() {
           </div>
         ) : (
           /* CARDS VIEW */
-          <div className="grid grid-cols-3 gap-3 flex-1 overflow-y-auto pb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 flex-1 overflow-y-auto pb-4">
             {filtered.length === 0 ? (
               <div className="col-span-3 flex flex-col items-center justify-center min-h-[280px] gap-2 text-gray-400 dark:text-[#666]">
                 <div className="w-12 h-12 rounded-xl bg-gray-50 dark:bg-[#111] border border-gray-100 dark:border-white/[0.06] flex items-center justify-center"><FileText size={20} className="text-gray-300 dark:text-[#555]" /></div>
@@ -615,8 +615,8 @@ export default function BaseConhecimentoView() {
 
         {/* MODAL DETALHES */}
         {selectedContent && (
-          <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4 animate-fade" onClick={() => setSelectedContent(null)}>
-            <div className="bg-white dark:bg-[#141414] rounded-xl w-full max-w-lg overflow-hidden border border-gray-200/60 animate-scale relative" onClick={e => e.stopPropagation()}>
+          <div className="fixed inset-0 bg-black/30 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade" onClick={() => setSelectedContent(null)}>
+            <div className="bg-white dark:bg-[#141414] rounded-t-2xl sm:rounded-xl w-full max-w-lg overflow-hidden border border-gray-200/60 animate-scale relative" onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-white/[0.06]">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-9 h-9 rounded-lg bg-gray-50 dark:bg-[#111] border border-gray-100 dark:border-white/[0.06] flex items-center justify-center shrink-0">
@@ -654,13 +654,13 @@ export default function BaseConhecimentoView() {
 
         {/* MODAL CRIAR CONTEUDO */}
         {isCreateOpen && (
-          <CreateContentModal onClose={() => setIsCreateOpen(null)} categories={CATEGORIES.filter(c => c.id !== 'all')} workspaceId={workspaceId} onSave={fetchAll} />
+          <CreateContentModal onClose={() => setIsCreateOpen(null)} categories={CATEGORIES.filter(c => c.id !== 'all')}  onSave={fetchAll} />
         )}
 
         {/* MODAL EDITAR CONTEUDO */}
         {editingItem && (
-          <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4 animate-fade" onClick={() => setEditingItem(null)}>
-            <div className="bg-white dark:bg-[#141414] rounded-xl w-full max-w-2xl max-h-[85vh] overflow-hidden border border-gray-200/60 animate-scale relative flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="fixed inset-0 bg-black/30 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade" onClick={() => setEditingItem(null)}>
+            <div className="bg-white dark:bg-[#141414] rounded-t-2xl sm:rounded-xl w-full max-w-2xl max-h-[92vh] overflow-hidden border border-gray-200/60 animate-scale relative flex flex-col pb-[env(safe-area-inset-bottom)]" onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-white/[0.06] shrink-0">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-[#7C3AED]/8 flex items-center justify-center"><Pencil size={14} className="text-[#7C3AED]" /></div>
@@ -700,7 +700,7 @@ export default function BaseConhecimentoView() {
   );
 }
 
-function CreateContentModal({ onClose, categories, workspaceId, onSave }) {
+function CreateContentModal({ onClose, categories, onSave }) {
   const [contentType, setContentType] = useState('texto');
   const [dragOver, setDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -749,10 +749,10 @@ function CreateContentModal({ onClose, categories, workspaceId, onSave }) {
         formData.append('file', selectedFile);
       }
 
-      await knowledgeApi.create(workspaceId, formData);
+      await knowledgeApi.create(formData);
       onSave();
       onClose();
-    } catch (err) {
+    } catch {
       setSaving(false);
     }
   };
@@ -760,8 +760,8 @@ function CreateContentModal({ onClose, categories, workspaceId, onSave }) {
   const isFile = contentType === 'pdf' || contentType === 'docx' || contentType === 'txt';
 
   return (
-    <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4 animate-fade" onClick={onClose}>
-      <div className="bg-white dark:bg-[#141414] rounded-xl w-full max-w-2xl max-h-[85vh] overflow-hidden border border-gray-200/60 animate-scale relative flex flex-col" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/30 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade" onClick={onClose}>
+      <div className="bg-white dark:bg-[#141414] rounded-t-2xl sm:rounded-xl w-full max-w-2xl max-h-[92vh] overflow-hidden border border-gray-200/60 animate-scale relative flex flex-col pb-[env(safe-area-inset-bottom)]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-white/[0.06] shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-[#7C3AED]/8 flex items-center justify-center"><Plus size={14} className="text-[#7C3AED]" /></div>

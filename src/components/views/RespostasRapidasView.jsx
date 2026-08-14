@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef } from 'react';
 import { onboardingApi } from '../../lib/api';
 import {
-  Search, Plus, X, Check, Trash2, Copy, Star, StarOff,
+  Search, Plus, Check, Trash2, Copy, Star, StarOff,
   Pencil, Tag, Clock, Zap, ChevronDown, Download, Upload,
   AlertCircle, Hash, MessageSquare, BarChart3,
 } from 'lucide-react';
+import Modal from '../../components/ui/Modal';
 
 const CATEGORIES = [
   { id: 'atendimento', label: 'Atendimento', color: 'var(--zelt-primary)' },
@@ -52,7 +53,7 @@ export default function RespostasRapidasView() {
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [sortBy, setSortBy] = useState('recent');
-  const [hasData, setHasData] = useState(false);
+  const [hasData] = useState(false);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -207,24 +208,61 @@ export default function RespostasRapidasView() {
             className="w-full pl-9 pr-3 py-2 text-xs border border-gray-200 dark:border-white/[0.06] rounded-lg focus:outline-none focus:border-[var(--zelt-primary)]/40 transition-colors bg-white dark:bg-[#141414]"
           />
         </div>
-        <div className="relative">
-          <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}
-            className="pl-3 pr-8 py-2 text-xs border border-gray-200 dark:border-white/[0.06] rounded-lg appearance-none focus:outline-none focus:border-[var(--zelt-primary)]/40 transition-colors bg-white dark:bg-[#141414]"
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <button
+            onClick={() => setFilterCategory('all')}
+            className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+              filterCategory === 'all'
+                ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+                : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+            }`}
           >
-            <option value="all">Todas categorias</option>
-            {allCategories.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-          </select>
-          <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-[#666] pointer-events-none" />
-        </div>
-        <div className="relative">
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}
-            className="pl-3 pr-8 py-2 text-xs border border-gray-200 dark:border-white/[0.06] rounded-lg appearance-none focus:outline-none focus:border-[var(--zelt-primary)]/40 transition-colors bg-white dark:bg-[#141414]"
+            Todas
+          </button>
+          {allCategories.map(c => (
+            <button
+              key={c.id}
+              onClick={() => setFilterCategory(c.id)}
+              className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                filterCategory === c.id
+                  ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+                  : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+              }`}
+            >
+              {c.label}
+            </button>
+          ))}
+          <span className="w-px h-4 bg-gray-200 dark:bg-white/[0.08] mx-1.5" />
+          <button
+            onClick={() => setSortBy('recent')}
+            className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+              sortBy === 'recent'
+                ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+                : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+            }`}
           >
-            <option value="recent">Mais recentes</option>
-            <option value="uses">Mais usadas</option>
-            <option value="name">Nome</option>
-          </select>
-          <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-[#666] pointer-events-none" />
+            Mais recentes
+          </button>
+          <button
+            onClick={() => setSortBy('uses')}
+            className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+              sortBy === 'uses'
+                ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+                : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+            }`}
+          >
+            Mais usadas
+          </button>
+          <button
+            onClick={() => setSortBy('name')}
+            className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+              sortBy === 'name'
+                ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+                : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+            }`}
+          >
+            Nome
+          </button>
         </div>
       </div>
 
@@ -312,19 +350,37 @@ export default function RespostasRapidasView() {
 
       {/* ===== CREATE/EDIT MODAL ===== */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="w-full max-w-4xl bg-white dark:bg-[#141414] rounded-2xl border border-gray-200 dark:border-white/[0.06] shadow-xl overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-white/[0.06]">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-[#ededed]">{editing ? 'Editar Resposta' : 'Nova Resposta'}</h3>
-              <button onClick={() => setModalOpen(false)} className="p-1.5 text-gray-400 dark:text-[#666] hover:text-gray-600 dark:text-[#aaa] dark:hover:text-[#ccc] hover:bg-gray-100 rounded-lg transition-colors">
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="flex max-h-[70vh]">
-              {/* Left: Form */}
-              <div className="flex-1 p-6 space-y-4 overflow-y-auto border-r border-gray-100 dark:border-white/[0.06]">
+        <Modal
+          open
+          onClose={() => setModalOpen(false)}
+          size="xl"
+          title={editing ? 'Editar Resposta' : 'Nova Resposta'}
+          subtitle="Modelo de mensagem com variaveis dinamicas"
+          icon={<Zap size={16} className="text-[var(--zelt-primary)]" />}
+          bodyClassName="flex overflow-hidden p-0"
+          footer={
+            <>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setFormFavorite(!formFavorite)} className="p-1.5 rounded-lg transition-colors hover:bg-gray-100">
+                  {formFavorite
+                    ? <Star size={16} className="text-amber-400 fill-amber-400" />
+                    : <StarOff size={16} className="text-gray-400 dark:text-[#666]" />
+                  }
+                </button>
+                <button onClick={() => setNewCatModal(true)} className="text-[11px] text-[var(--zelt-primary)] hover:underline">+ Nova categoria</button>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setModalOpen(false)} className="px-3 py-1.5 text-xs text-gray-500 dark:text-[#808080] hover:bg-gray-100 rounded-lg transition-colors">Cancelar</button>
+                <button onClick={handleSave} disabled={!formTitle.trim() || !formMessage.trim()}
+                  className="px-3 py-1.5 text-xs font-medium text-white bg-[var(--zelt-primary)] hover:bg-[var(--zelt-primary-hover)] rounded-lg transition-colors disabled:opacity-40">
+                  {editing ? 'Salvar' : 'Criar Resposta'}
+                </button>
+              </div>
+            </>
+          }
+        >
+          {/* Left: Form */}
+          <div className="flex-1 min-w-0 p-5 space-y-4 overflow-y-auto md:border-r border-gray-100 dark:border-white/[0.06]">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[10px] font-medium text-gray-400 dark:text-[#666] uppercase tracking-wider mb-1">Titulo</label>
@@ -384,8 +440,8 @@ export default function RespostasRapidasView() {
               </div>
 
               {/* Right: WhatsApp Preview */}
-              <div className="w-[320px] shrink-0 flex flex-col bg-[#e5ddd5]">
-                <div className="px-4 py-2.5 bg-[#075e54] flex items-center gap-2">
+              <div className="hidden md:flex w-[300px] lg:w-[320px] shrink-0 flex-col bg-[#e5ddd5] dark:bg-[#1f2c33]">
+                <div className="px-4 py-2.5 bg-[#075e54] dark:bg-[#0b141a] flex items-center gap-2">
                   <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white text-[10px] font-bold">JS</div>
                   <div>
                     <p className="text-xs font-medium text-white">{VARIABLES[0].sample}</p>
@@ -395,8 +451,8 @@ export default function RespostasRapidasView() {
 
                 <div className="flex-1 p-3 overflow-y-auto">
                   <div className="max-w-[85%] ml-auto">
-                    <div className="bg-[#dcf8c6] rounded-lg px-3 py-2 shadow-sm">
-                      <p className="text-[12px] text-gray-800 leading-relaxed whitespace-pre-wrap">
+                    <div className="bg-[#dcf8c6] dark:bg-[#005c4b] rounded-lg px-3 py-2 shadow-sm">
+                      <p className="text-[12px] text-gray-800 dark:text-gray-100 leading-relaxed whitespace-pre-wrap">
                         {formMessage ? replaceVars(formMessage) : (
                           <span className="text-gray-400 dark:text-[#666] italic">Sua mensagem aparecera aqui...</span>
                         )}
@@ -409,91 +465,81 @@ export default function RespostasRapidasView() {
                   </div>
                 </div>
 
-                <div className="px-3 py-2 bg-[#f0f0f0] border-t border-gray-200 dark:border-white/[0.06]">
+                <div className="px-3 py-2 bg-[#f0f0f0] dark:bg-[#0b141a] border-t border-gray-200 dark:border-white/[0.06]">
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-8 bg-white dark:bg-[#141414] rounded-full px-3 flex items-center">
                       <span className="text-[11px] text-gray-400 dark:text-[#666]">Digite uma mensagem</span>
                     </div>
-                    <div className="w-8 h-8 bg-[#075e54] rounded-full flex items-center justify-center">
+                    <div className="w-8 h-8 bg-[#075e54] dark:bg-[#0b141a] rounded-full flex items-center justify-center">
                       <MessageSquare size={12} className="text-white" />
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="flex items-center justify-between px-6 py-3 border-t border-gray-100 dark:border-white/[0.06] bg-gray-50/50">
-              <div className="flex items-center gap-2">
-                <button onClick={() => setFormFavorite(!formFavorite)} className="p-1.5 rounded-lg transition-colors hover:bg-gray-100">
-                  {formFavorite
-                    ? <Star size={16} className="text-amber-400 fill-amber-400" />
-                    : <StarOff size={16} className="text-gray-400 dark:text-[#666]" />
-                  }
-                </button>
-                <button onClick={() => setNewCatModal(true)} className="text-[11px] text-[var(--zelt-primary)] hover:underline">+ Nova categoria</button>
-              </div>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setModalOpen(false)} className="px-3 py-1.5 text-xs text-gray-500 dark:text-[#808080] hover:bg-gray-100 rounded-lg transition-colors">Cancelar</button>
-                <button onClick={handleSave} disabled={!formTitle.trim() || !formMessage.trim()}
-                  className="px-3 py-1.5 text-xs font-medium text-white bg-[var(--zelt-primary)] hover:bg-[var(--zelt-primary-hover)] rounded-lg transition-colors disabled:opacity-40">
-                  {editing ? 'Salvar' : 'Criar Resposta'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+          </Modal>
+        )}
 
       {/* ===== NEW CATEGORY MODAL ===== */}
       {newCatModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="w-full max-w-sm bg-white dark:bg-[#141414] rounded-2xl border border-gray-200 dark:border-white/[0.06] shadow-xl p-5 animate-in slide-in-from-bottom-4 duration-300">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-[#ededed] mb-4">Nova Categoria</h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-[10px] font-medium text-gray-400 dark:text-[#666] uppercase tracking-wider mb-1">Nome</label>
-                <input type="text" value={newCatName} onChange={(e) => setNewCatName(e.target.value)}
-                  placeholder="Ex: Promocoes"
-                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg focus:outline-none focus:border-[var(--zelt-primary)]/40 transition-colors" />
-              </div>
-              <div>
-                <label className="block text-[10px] font-medium text-gray-400 dark:text-[#666] uppercase tracking-wider mb-1">Cor</label>
-                <div className="flex items-center gap-2">
-                  <input type="color" value={newCatColor} onChange={(e) => setNewCatColor(e.target.value)}
-                    className="w-8 h-8 rounded-lg border border-gray-200 dark:border-white/[0.06] cursor-pointer" />
-                  <span className="text-xs text-gray-500 dark:text-[#808080] font-mono">{newCatColor}</span>
-                </div>
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 mt-5">
+        <Modal
+          open
+          onClose={() => setNewCatModal(false)}
+          size="sm"
+          title="Nova Categoria"
+          subtitle="Agrupe suas respostas por tema"
+          icon={<Tag size={16} className="text-[var(--zelt-primary)]" />}
+          footer={
+            <>
               <button onClick={() => setNewCatModal(false)} className="px-3 py-1.5 text-xs text-gray-500 dark:text-[#808080] hover:bg-gray-100 rounded-lg transition-colors">Cancelar</button>
               <button onClick={addCustomCategory} disabled={!newCatName.trim()}
                 className="px-3 py-1.5 text-xs font-medium text-white bg-[var(--zelt-primary)] hover:bg-[var(--zelt-primary-hover)] rounded-lg transition-colors disabled:opacity-40">
                 Criar
               </button>
+            </>
+          }
+        >
+          <div className="space-y-3">
+            <div>
+              <label className="block text-[10px] font-medium text-gray-400 dark:text-[#666] uppercase tracking-wider mb-1">Nome</label>
+              <input type="text" value={newCatName} onChange={(e) => setNewCatName(e.target.value)}
+                placeholder="Ex: Promocoes"
+                className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg focus:outline-none focus:border-[var(--zelt-primary)]/40 transition-colors" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-medium text-gray-400 dark:text-[#666] uppercase tracking-wider mb-1">Cor</label>
+              <div className="flex items-center gap-2">
+                <input type="color" value={newCatColor} onChange={(e) => setNewCatColor(e.target.value)}
+                  className="w-8 h-8 rounded-lg border border-gray-200 dark:border-white/[0.06] cursor-pointer" />
+                <span className="text-xs text-gray-500 dark:text-[#808080] font-mono">{newCatColor}</span>
+              </div>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* ===== IMPORT MODAL ===== */}
       {importModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="w-full max-w-sm bg-white dark:bg-[#141414] rounded-2xl border border-gray-200 dark:border-white/[0.06] shadow-xl p-5 animate-in slide-in-from-bottom-4 duration-300">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-[#ededed] mb-2">Importar Respostas</h3>
-            <p className="text-xs text-gray-400 dark:text-[#666] mb-4">Selecione um arquivo JSON exportado anteriormente.</p>
-            <div className="border-2 border-dashed border-gray-200 dark:border-white/[0.06] rounded-xl p-8 text-center hover:border-[var(--zelt-primary)]/40 transition-colors cursor-pointer">
-              <Upload size={24} className="text-gray-300 dark:text-[#555] mx-auto mb-2" />
-              <p className="text-xs text-gray-500 dark:text-[#808080]">Arraste ou clique para selecionar</p>
-              <p className="text-[10px] text-gray-400 dark:text-[#666] mt-1">.json</p>
-            </div>
-            <div className="flex justify-end gap-2 mt-5">
+        <Modal
+          open
+          onClose={() => setImportModal(false)}
+          size="sm"
+          title="Importar Respostas"
+          subtitle="Restaurar respostas de um backup"
+          icon={<Upload size={16} className="text-[var(--zelt-primary)]" />}
+          footer={
+            <>
               <button onClick={() => setImportModal(false)} className="px-3 py-1.5 text-xs text-gray-500 dark:text-[#808080] hover:bg-gray-100 rounded-lg transition-colors">Cancelar</button>
               <button className="px-3 py-1.5 text-xs font-medium text-white bg-[var(--zelt-primary)] hover:bg-[var(--zelt-primary-hover)] rounded-lg transition-colors">Importar</button>
-            </div>
+            </>
+          }
+        >
+          <p className="text-xs text-gray-400 dark:text-[#666] mb-4">Selecione um arquivo JSON exportado anteriormente.</p>
+          <div className="border-2 border-dashed border-gray-200 dark:border-white/[0.06] rounded-xl p-8 text-center hover:border-[var(--zelt-primary)]/40 transition-colors cursor-pointer">
+            <Upload size={24} className="text-gray-300 dark:text-[#555] mx-auto mb-2" />
+            <p className="text-xs text-gray-500 dark:text-[#808080]">Arraste ou clique para selecionar</p>
+            <p className="text-[10px] text-gray-400 dark:text-[#666] mt-1">.json</p>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

@@ -48,125 +48,65 @@ export const api = {
         request(path, { ...opts, method: "POST", body: formData }),
 };
 
-// ---------- WORKSPACE ----------
-
-export const workspaceApi = {
-    list: () => api.get("/workspace"),
-    get: (id) => api.get(`/workspace/${id}`),
-    create: (name, description) =>
-        api.post("/workspace", { name, description }),
-    update: (id, data) =>
-        api.patch(`/workspace/${id}`, data),
-    delete: (id) => api.delete(`/workspace/${id}`),
-    validateAccess: (id) => api.get(`/workspace/${id}/validate`),
-};
-
-// ---------- MEMBERS ----------
-
-export const memberApi = {
-    list: (workspaceId) => api.get(`/workspace/${workspaceId}/members`),
-    inviteByEmail: (workspaceId, email, role, permissions) =>
-        api.post(`/workspace/${workspaceId}/invite/email`, { email, role, permissions }),
-    generateLink: (workspaceId, role, permissions, expiresInDays, maxUses) =>
-        api.post(`/workspace/${workspaceId}/invite/link`, { role, permissions, expiresInDays, maxUses }),
-    resendInvite: (workspaceId, inviteId) =>
-        api.post(`/workspace/${workspaceId}/invite/resend/${inviteId}`),
-    revokeInvite: (workspaceId, inviteId) =>
-        api.post(`/workspace/${workspaceId}/invite/revoke/${inviteId}`),
-    changeRole: (workspaceId, targetUserId, role) =>
-        api.patch(`/workspace/${workspaceId}/members/role`, { targetUserId, role }),
-    updatePermissions: (workspaceId, targetUserId, permissions) =>
-        api.patch(`/workspace/${workspaceId}/members/permissions`, { targetUserId, permissions }),
-    deactivate: (workspaceId, targetUserId) =>
-        api.patch(`/workspace/${workspaceId}/members/${targetUserId}/deactivate`),
-    reactivate: (workspaceId, targetUserId) =>
-        api.patch(`/workspace/${workspaceId}/members/${targetUserId}/reactivate`),
-    remove: (workspaceId, targetUserId) =>
-        api.delete(`/workspace/${workspaceId}/members/${targetUserId}`),
-};
-
-// ---------- INVITES ----------
-
-export const inviteApi = {
-    validate: (token) => api.post("/workspace/invite/validate", { token }),
-    accept: (token) => api.post("/workspace/invite/accept", { token }),
-    pending: () => api.get("/workspace/invites/pending"),
-    listLinks: (workspaceId) => api.get(`/workspace/${workspaceId}/invite/links`),
-};
-
 // ---------- TASKS ----------
 
 export const taskApi = {
-    list: (workspaceId, params) => {
+    list: (params) => {
         const query = params ? "?" + new URLSearchParams(params).toString() : "";
-        return api.get(`/workspace/${workspaceId}/tasks${query}`);
+        return api.get(`/tasks${query}`);
     },
-    get: (workspaceId, taskId) =>
-        api.get(`/workspace/${workspaceId}/tasks/${taskId}`),
-    create: (workspaceId, data) =>
-        api.post(`/workspace/${workspaceId}/tasks`, data),
-    update: (workspaceId, taskId, data) =>
-        api.patch(`/workspace/${workspaceId}/tasks/${taskId}`, data),
-    delete: (workspaceId, taskId) =>
-        api.delete(`/workspace/${workspaceId}/tasks/${taskId}`),
-    addComment: (workspaceId, taskId, text) =>
-        api.post(`/workspace/${workspaceId}/tasks/${taskId}/comments`, { text }),
-    deleteComment: (workspaceId, taskId, commentId) =>
-        api.delete(`/workspace/${workspaceId}/tasks/${taskId}/comments/${commentId}`),
-    stats: (workspaceId) =>
-        api.get(`/workspace/${workspaceId}/stats`),
+    get: (taskId) =>
+        api.get(`/tasks/${taskId}`),
+    create: (data) =>
+        api.post(`/tasks`, data),
+    update: (taskId, data) =>
+        api.patch(`/tasks/${taskId}`, data),
+    delete: (taskId) =>
+        api.delete(`/tasks/${taskId}`),
+    addComment: (taskId, text) =>
+        api.post(`/tasks/${taskId}/comments`, { text }),
+    deleteComment: (taskId, commentId) =>
+        api.delete(`/tasks/${taskId}/comments/${commentId}`),
+    stats: () =>
+        api.get(`/tasks/stats`),
 };
 
 // ---------- KNOWLEDGE BASE ----------
 
 export const knowledgeApi = {
-    list: (workspaceId, params) => {
+    list: (params) => {
         const query = params ? "?" + new URLSearchParams(params).toString() : "";
-        return api.get(`/workspace/${workspaceId}/knowledge${query}`);
+        return api.get(`/knowledge${query}`);
     },
-    get: (workspaceId, itemId) =>
-        api.get(`/workspace/${workspaceId}/knowledge/${itemId}`),
-    create: (workspaceId, data) =>
-        api.upload(`/workspace/${workspaceId}/knowledge`, data),
-    update: (workspaceId, itemId, data) =>
-        api.patch(`/workspace/${workspaceId}/knowledge/${itemId}`, data),
-    delete: (workspaceId, itemId) =>
-        api.delete(`/workspace/${workspaceId}/knowledge/${itemId}`),
-    stats: (workspaceId) =>
-        api.get(`/workspace/${workspaceId}/knowledge/stats`),
+    get: (itemId) =>
+        api.get(`/knowledge/${itemId}`),
+    create: (data) =>
+        api.upload(`/knowledge`, data),
+    update: (itemId, data) =>
+        api.patch(`/knowledge/${itemId}`, data),
+    delete: (itemId) =>
+        api.delete(`/knowledge/${itemId}`),
+    stats: () =>
+        api.get(`/knowledge/stats`),
 };
 
 // ---------- EVOLUTION API (all requests go through backend) ----------
 
 export const evolutionApi = {
-    listInstances: (workspaceId) => {
-        const opts = workspaceId ? { headers: { "x-workspace-id": workspaceId } } : {};
-        return api.get("/evolution/instances", opts);
-    },
+    listInstances: () =>
+        api.get("/evolution/instances"),
     getInstance: (name) => api.get(`/evolution/instances/${name}`),
-    createInstance: (instanceName, webhookUrl, workspaceId) => {
-        const body = {
+    createInstance: (instanceName) =>
+        api.post("/evolution/instances", {
             instanceName,
-            workspaceId,
             integration: "WHATSAPP-BAILEYS",
             qrcode: true,
             alwaysOnline: false,
-            groupsIgnore: false,
+            groupsIgnore: true,
             readMessages: true,
             readStatus: false,
             syncFullHistory: false,
-        };
-        const url = webhookUrl || import.meta.env.VITE_WEBHOOK_URL;
-        if (url) {
-            body.webhook = {
-                enabled: true,
-                url,
-                events: ["MESSAGES_UPSERT", "CONNECTION_UPDATE", "QRCODE_UPDATED"],
-                webhookBase64: true,
-            };
-        }
-        return api.post("/evolution/instances", body);
-    },
+        }),
     connectInstance: (name, number) => api.post(`/evolution/instances/${name}/connect`, number ? { number } : {}),
     logoutInstance: (name) => api.post(`/evolution/instances/${name}/logout`),
     deleteInstance: (name) => api.delete(`/evolution/instances/${name}`),
@@ -198,23 +138,23 @@ export const evolutionApi = {
 // ---------- SETTINGS ----------
 
 export const settingsApi = {
-    getWorkspace: (workspaceId) =>
-        api.get(`/workspace/${workspaceId}/settings`),
-    updateWorkspace: (workspaceId, data) =>
-        api.patch(`/workspace/${workspaceId}/settings`, data),
-    getProfile: (workspaceId) =>
-        api.get(`/workspace/${workspaceId}/profile`),
-    updateProfile: (workspaceId, data) =>
-        api.patch(`/workspace/${workspaceId}/profile`, data),
-    auditLogs: (workspaceId, params) => {
+    getSettings: () =>
+        api.get(`/settings`),
+    updateSettings: (data) =>
+        api.patch(`/settings`, data),
+    getProfile: () =>
+        api.get(`/settings/profile`),
+    updateProfile: (data) =>
+        api.patch(`/settings/profile`, data),
+    auditLogs: (params) => {
         const query = params ? "?" + new URLSearchParams(params).toString() : "";
-        return api.get(`/workspace/${workspaceId}/audit-logs${query}`);
+        return api.get(`/settings/audit-logs${query}`);
     },
 };
 
 export const onboardingApi = {
-    getStatus: (workspaceId) =>
-        api.get(`/user/onboarding?workspaceId=${workspaceId}`),
+    getStatus: () =>
+        api.get(`/user/onboarding`),
     completeStep: (step) =>
         api.post(`/user/onboarding/complete`, { step }),
     reset: () =>
@@ -224,33 +164,40 @@ export const onboardingApi = {
 // ---------- GEMINI AI ----------
 
 export const geminiApi = {
-    getAutoReply: (workspaceId) =>
-        api.get("/ai/auto-reply", { headers: { "x-workspace-id": workspaceId } }),
-    toggleAutoReply: (workspaceId, enabled) =>
-        api.post("/ai/auto-reply", { enabled }, { headers: { "x-workspace-id": workspaceId } }),
-    chat: (message, instanceName, remoteJid, workspaceId, systemPrompt) =>
-        api.post("/ai/chat", { message, instanceName, remoteJid, systemPrompt }, { headers: { "x-workspace-id": workspaceId } }),
+    getAutoReply: () =>
+        api.get("/ai/auto-reply"),
+    toggleAutoReply: (enabled) =>
+        api.post("/ai/auto-reply", { enabled }),
+    chat: (message, instanceName, remoteJid, systemPrompt) =>
+        api.post("/ai/chat", { message, instanceName, remoteJid, systemPrompt }),
     clearConversation: (instanceName, remoteJid) =>
         api.post("/ai/clear", { instanceName, remoteJid }),
+    test: (payload) =>
+        api.post("/ai/test", payload),
+    getConfig: () =>
+        api.get("/ai/config"),
+    saveConfig: (config) =>
+        api.put("/ai/config", config),
+    resetConfig: () =>
+        api.post("/ai/config/reset"),
 };
 
 // ---------- AGENDA / CALENDAR ----------
-
 export const agendaApi = {
-    list: (workspaceId, params) => {
+    list: (params) => {
         const query = params ? "?" + new URLSearchParams(params).toString() : "";
-        return api.get(`/workspace/${workspaceId}/events${query}`);
+        return api.get(`/agenda/events${query}`);
     },
-    get: (workspaceId, eventId) =>
-        api.get(`/workspace/${workspaceId}/events/${eventId}`),
-    create: (workspaceId, data) =>
-        api.post(`/workspace/${workspaceId}/events`, data),
-    update: (workspaceId, eventId, data) =>
-        api.patch(`/workspace/${workspaceId}/events/${eventId}`, data),
-    delete: (workspaceId, eventId) =>
-        api.delete(`/workspace/${workspaceId}/events/${eventId}`),
-    stats: (workspaceId) =>
-        api.get(`/workspace/${workspaceId}/events/stats`),
+    get: (eventId) =>
+        api.get(`/agenda/events/${eventId}`),
+    create: (data) =>
+        api.post(`/agenda/events`, data),
+    update: (eventId, data) =>
+        api.patch(`/agenda/events/${eventId}`, data),
+    delete: (eventId) =>
+        api.delete(`/agenda/events/${eventId}`),
+    stats: () =>
+        api.get(`/agenda/events/stats`),
 };
 
 // ---------- CHAT (SSE + DB) ----------
@@ -279,6 +226,9 @@ export const chatApi = {
         es.addEventListener("qrcode.updated", (e) => {
             try { onMessage("qrcode.updated", JSON.parse(e.data)); } catch {}
         });
+        es.addEventListener("agenda.created", (e) => {
+            try { onMessage("agenda.created", JSON.parse(e.data)); } catch {}
+        });
         es.onerror = () => {};
         return es;
     },
@@ -286,6 +236,8 @@ export const chatApi = {
         api.get(`/chat/messages/${instanceName}/${remoteJid}?limit=${limit}`),
     getContacts: (instanceName) =>
         api.get(`/chat/contacts/${instanceName}`),
+    createContact: (instanceName, { phone, customName, pushName }) =>
+        api.post(`/chat/contacts/${instanceName}`, { phone, customName, pushName }),
     updateContactName: (contactId, customName) =>
         api.put(`/chat/contacts/${contactId}/name`, { customName }),
     getTags: (instanceName) =>
@@ -302,4 +254,77 @@ export const chatApi = {
         api.delete(`/chat/messages/${instanceName}/${remoteJid}`),
     batchUpdateProfilePics: (pics) =>
         api.post("/chat/contacts/batch-profile-pic", { pics }),
+};
+
+// ---------- DRIVE / MEDIA (Zelt Drive) ----------
+
+export const driveApi = {
+    listFolders: () =>
+        api.get("/drive/folders"),
+    createFolder: (data) =>
+        api.post("/drive/folders", data),
+    renameFolder: (folderId, name) =>
+        api.patch(`/drive/folders/${folderId}`, { name }),
+    deleteFolder: (folderId) =>
+        api.delete(`/drive/folders/${folderId}`),
+    listAssets: (params) => {
+        const query = params ? "?" + new URLSearchParams(params).toString() : "";
+        return api.get(`/drive/assets${query}`);
+    },
+    getAsset: (assetId) =>
+        api.get(`/drive/assets/${assetId}`),
+    upload: (file, folderId) => {
+        const form = new FormData();
+        form.append("file", file);
+        if (folderId) form.append("folderId", folderId);
+        return api.upload("/drive/assets/upload", form);
+    },
+    renameAsset: (assetId, name) =>
+        api.patch(`/drive/assets/${assetId}`, { name }),
+    deleteAsset: (assetId) =>
+        api.delete(`/drive/assets/${assetId}`),
+    downloadUrl: (assetId) => {
+        const token = getToken();
+        return `${API_URL}/drive/assets/${assetId}/download?token=${token}`;
+    },
+    stats: () =>
+        api.get("/drive/stats"),
+};
+
+// ---------- SHEETS (Zelt Sheets) ----------
+
+export const sheetsApi = {
+    stats: () =>
+        api.get("/sheets/stats"),
+    listWorkbooks: () =>
+        api.get("/sheets/workbooks"),
+    getWorkbook: (workbookId) =>
+        api.get(`/sheets/workbooks/${workbookId}`),
+    createWorkbook: (data) =>
+        api.post("/sheets/workbooks", data),
+    updateWorkbook: (workbookId, data) =>
+        api.patch(`/sheets/workbooks/${workbookId}`, data),
+    deleteWorkbook: (workbookId) =>
+        api.delete(`/sheets/workbooks/${workbookId}`),
+    createSheet: (workbookId, data) =>
+        api.post(`/sheets/workbooks/${workbookId}/sheets`, data),
+    getSheet: (sheetId) =>
+        api.get(`/sheets/sheets/${sheetId}`),
+    updateSheet: (sheetId, data) =>
+        api.patch(`/sheets/sheets/${sheetId}`, data),
+    deleteSheet: (sheetId) =>
+        api.delete(`/sheets/sheets/${sheetId}`),
+    saveCells: (sheetId, cells) =>
+        api.put(`/sheets/sheets/${sheetId}/cells`, { cells }),
+    exportUrl: (workbookId) => {
+        const token = getToken();
+        return `${API_URL}/sheets/workbooks/${workbookId}/export?token=${token}`;
+    },
+};
+
+// ---------- DASHBOARD ----------
+
+export const dashboardApi = {
+    stats: () =>
+        api.get("/dashboard/stats"),
 };

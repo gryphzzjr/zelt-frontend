@@ -37,7 +37,7 @@ const testimonials = [
     name: 'Ricardo Santos',
     role: 'Fundador',
     company: 'StartupHub',
-    text: 'Como startup, precisávamos de uma solução que escalasse conosco. O plano Starter foi perfeito para começarmos e agora estamos no Professional.',
+    text: 'Como startup, precisávamos de uma solução que escalasse conosco. O teste grátis de 3 dias foi perfeito para começarmos e agora estamos no Professional.',
     metric: '3x crescimento',
   },
   {
@@ -174,7 +174,7 @@ export default function ClientsPage() {
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/register" className="rounded bg-[#6300ff] px-8 py-3.5 text-sm font-medium text-white hover:bg-[#5200d5] transition-colors">
-              Começar Grátis
+              Teste grátis por 3 dias
             </Link>
             <Link to="/pricing" className="rounded border border-gray-200 px-8 py-3.5 text-sm font-medium text-black hover:bg-gray-50 transition-colors">
               Ver Planos

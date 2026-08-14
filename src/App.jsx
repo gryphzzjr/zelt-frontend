@@ -1,15 +1,9 @@
 import React, { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ToastProvider } from "./components/Toast";
 import ProtectedRoute from "./components/ProtectedRoute";
-
-function RedirectTo({ to }) {
-  const params = useParams();
-  const path = to.replace(/:userId/g, params.userId || '');
-  return <Navigate to={path} replace />;
-}
 
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -17,7 +11,6 @@ const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const OnboardingFlow = lazy(() => import("./pages/Onboarding"));
 const EmailVerification = lazy(() => import("./pages/EmailVerification"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const WorkspacesPage = lazy(() => import('./pages/WorkspaceManager'));
 const ProductPage = lazy(() => import('./pages/ProductPage'));
 const ResourcesPage = lazy(() => import('./pages/ResourcesPage'));
 const TermsPage = lazy(() => import('./pages/TermsPage'));
@@ -28,7 +21,6 @@ const IntegrationsPage = lazy(() => import('./pages/IntegrationsPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const ContactPage = lazy(() => import('./pages/ContactPage'));
 const ClientsPage = lazy(() => import('./pages/ClientsPage'));
-const InviteAcceptPage = lazy(() => import('./pages/InviteAcceptPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
 const PaymentSuccessPage = lazy(() => import('./pages/PaymentSuccessPage'));
 const PaymentErrorPage = lazy(() => import('./pages/PaymentErrorPage'));
@@ -73,21 +65,7 @@ export default function App() {
               <Route path="/payment/warning" element={<PaymentWarningPage />} />
               <Route path="/auth/google-callback" element={<GoogleCallbackPage />} />
 
-              {/* Protected routes with userId */}
-              <Route path="/:userId/profile" element={
-                <ProtectedRoute><InviteAcceptPage /></ProtectedRoute>
-              } />
-              <Route path="/workspace/:userId/workspaces" element={
-                <ProtectedRoute><WorkspacesPage /></ProtectedRoute>
-              } />
-              <Route path="/workspace/:userId/dashboard" element={
-                <ProtectedRoute><Dashboard /></ProtectedRoute>
-              } />
-              <Route path="/workspace/:userId/*" element={
-                <ProtectedRoute><RedirectTo to="/workspace/:userId/workspaces" /></ProtectedRoute>
-              } />
-
-              {/* Legacy redirect */}
+              {/* Protected routes */}
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
 
               <Route path="*" element={<h1>hey, this page dont exist :b</h1>} />

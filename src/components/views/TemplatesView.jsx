@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Search, Plus, X, Edit3, Trash2, Copy, Eye, Star,
-  FileText, Tag, Building2, Layers, Clock, ChevronDown,
-  ChevronRight, Check, BookOpen, Settings, Heart,
-  ArrowRight, ExternalLink, AlertTriangle,
+  FileText, Layers, Clock,
+  Check, BookOpen,
+  ArrowRight,
 } from 'lucide-react';
+import Modal from '../../components/ui/Modal';
 
 const CATEGORIES = [
   { id: 'atendimento', label: 'Atendimento', color: 'var(--zelt-primary)' },
@@ -173,28 +174,85 @@ export default function TemplatesView() {
             <input type="text" placeholder="Buscar templates..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg bg-white dark:bg-[#141414] text-gray-900 dark:text-[#ededed] placeholder-gray-400 dark:placeholder-[#555] focus:border-[var(--zelt-primary)]/40 transition-colors" />
           </div>
-          <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}
-            className="px-3 py-2.5 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg bg-white dark:bg-[#141414] text-gray-600 dark:text-[#aaa] cursor-pointer">
-            <option value="todas">Categoria</option>
-            {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-          </select>
-          <select value={filterBusiness} onChange={(e) => setFilterBusiness(e.target.value)}
-            className="px-3 py-2.5 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg bg-white dark:bg-[#141414] text-gray-600 dark:text-[#aaa] cursor-pointer">
-            <option value="todos">Tipo de negocio</option>
-            {businessTypes.map(b => <option key={b} value={b}>{b}</option>)}
-          </select>
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}
-            className="px-3 py-2.5 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg bg-white dark:bg-[#141414] text-gray-600 dark:text-[#aaa] cursor-pointer">
-            <option value="name">Ordenar por nome</option>
-            <option value="category">Ordenar por categoria</option>
-            <option value="usage">Mais utilizados</option>
-            <option value="updated">Atualizados recentemente</option>
-          </select>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button onClick={() => setFilterCategory('todas')}
+              className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                filterCategory === 'todas'
+                  ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+                  : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+              }`}>
+              Categoria
+            </button>
+            {CATEGORIES.map(c => (
+              <button key={c.id} onClick={() => setFilterCategory(c.id)}
+                className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                  filterCategory === c.id
+                    ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+                    : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+                }`}>
+                {c.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button onClick={() => setFilterBusiness('todos')}
+              className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                filterBusiness === 'todos'
+                  ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+                  : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+              }`}>
+              Tipo de negocio
+            </button>
+            {businessTypes.map(b => (
+              <button key={b} onClick={() => setFilterBusiness(b)}
+                className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                  filterBusiness === b
+                    ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+                    : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+                }`}>
+                {b}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button onClick={() => setSortBy('name')}
+              className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                sortBy === 'name'
+                  ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+                  : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+              }`}>
+              Nome
+            </button>
+            <button onClick={() => setSortBy('category')}
+              className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                sortBy === 'category'
+                  ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+                  : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+              }`}>
+              Categoria
+            </button>
+            <button onClick={() => setSortBy('usage')}
+              className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                sortBy === 'usage'
+                  ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+                  : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+              }`}>
+              Mais utilizados
+            </button>
+            <button onClick={() => setSortBy('updated')}
+              className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                sortBy === 'updated'
+                  ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+                  : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+              }`}>
+              Atualizados recentemente
+            </button>
+          </div>
         </div>
 
         {/* STATS + CONTENT */}
         <>
-            <div className="grid grid-cols-4 gap-3">
+            <div className="cards-carousel" style={{ '--cols': 4 }}>
               {[
                 { label: 'Total de Templates', value: counts.total, color: 'text-gray-900 dark:text-[#ededed]', bg: 'bg-gray-50 dark:bg-[#111]', icon: FileText, iconColor: 'text-gray-400 dark:text-[#666]' },
                 { label: 'Templates Ativos', value: counts.active, color: 'text-[var(--zelt-primary)]', bg: 'bg-[var(--zelt-primary)]/5', icon: Check, iconColor: 'text-[var(--zelt-primary)]' },
@@ -219,7 +277,7 @@ export default function TemplatesView() {
                 <p className="text-sm text-gray-400 dark:text-[#666]">Nenhum template encontrado.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredTemplates.map(template => {
                   const cat = CATEGORIES.find(c => c.id === template.category);
                   return (
@@ -304,57 +362,56 @@ export default function TemplatesView() {
 
         {/* APPLY MODAL */}
         {showApplyModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 fade-in" onClick={() => setShowApplyModal(null)}>
-            <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-xl w-[440px] p-6" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-lg bg-[var(--zelt-primary)]/10 flex items-center justify-center">
-                  <ArrowRight size={18} className="text-[var(--zelt-primary)]" />
-                </div>
-                <div>
-                  <h3 className="text-base text-gray-900 dark:text-[#ededed]">Aplicar Template</h3>
-                  <p className="text-xs text-gray-400 dark:text-[#666]">{showApplyModal.name}</p>
-                </div>
-              </div>
-              <div className="bg-gray-50 dark:bg-[#111] border border-gray-100 dark:border-white/[0.06] rounded-lg p-4 mb-5 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500 dark:text-[#808080]">Conteudos incluidos</span>
-                  <span className="text-sm text-gray-700 dark:text-[#ccc]">{showApplyModal.contents.length}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500 dark:text-[#808080]">Instrucoes de treinamento</span>
-                  <span className="text-sm text-gray-700 dark:text-[#ccc]">{showApplyModal.instructions ? '1' : '0'}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500 dark:text-[#808080]">Categoria</span>
-                  <span className="text-sm text-gray-700 dark:text-[#ccc]">{CATEGORIES.find(c => c.id === showApplyModal.category)?.label}</span>
-                </div>
-              </div>
-              <p className="text-sm text-gray-500 dark:text-[#808080] mb-5">O template ira preencher automaticamente as configuracoes de treinamento da IA e selecionar os conteudos definidos.</p>
-              <div className="flex justify-end gap-2">
-                <button onClick={() => setShowApplyModal(null)} className="px-4 py-2 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg text-gray-600 dark:text-[#aaa] hover:bg-gray-50 dark:bg-[#111] transition-colors">Cancelar</button>
+          <Modal
+            open
+            onClose={() => setShowApplyModal(null)}
+            size="sm"
+            title="Aplicar Template"
+            subtitle={showApplyModal.name}
+            icon={<ArrowRight size={16} className="text-[var(--zelt-primary)]" />}
+            footer={
+              <>
+                <button onClick={() => setShowApplyModal(null)} className="px-4 py-2 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg text-gray-600 dark:text-[#aaa] hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors">Cancelar</button>
                 <button onClick={() => handleApplyTemplate(showApplyModal)} className="px-4 py-2 text-sm bg-[var(--zelt-primary)] text-white rounded-lg hover:bg-[var(--zelt-primary)]/80 transition-colors">Confirmar</button>
+              </>
+            }
+          >
+            <div className="bg-gray-50 dark:bg-[#111] border border-gray-100 dark:border-white/[0.06] rounded-lg p-4 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500 dark:text-[#808080]">Conteudos incluidos</span>
+                <span className="text-sm text-gray-700 dark:text-[#ccc]">{showApplyModal.contents.length}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500 dark:text-[#808080]">Instrucoes de treinamento</span>
+                <span className="text-sm text-gray-700 dark:text-[#ccc]">{showApplyModal.instructions ? '1' : '0'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500 dark:text-[#808080]">Categoria</span>
+                <span className="text-sm text-gray-700 dark:text-[#ccc]">{CATEGORIES.find(c => c.id === showApplyModal.category)?.label}</span>
               </div>
             </div>
-          </div>
+            <p className="text-sm text-gray-500 dark:text-[#808080] mt-4">O template ira preencher automaticamente as configuracoes de treinamento da IA e selecionar os conteudos definidos.</p>
+          </Modal>
         )}
 
         {/* CONFIRM DELETE */}
         {confirmDelete && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 fade-in" onClick={() => setConfirmDelete(null)}>
-            <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-xl w-[400px] p-6" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
-                  <Trash2 size={18} className="text-red-500" />
-                </div>
-                <h3 className="text-base text-gray-900 dark:text-[#ededed]">Excluir template</h3>
-              </div>
-              <p className="text-sm text-gray-500 dark:text-[#808080] mb-5">Tem certeza que deseja excluir "{confirmDelete.name}"? Esta acao nao pode ser desfeita.</p>
-              <div className="flex justify-end gap-2">
-                <button onClick={() => setConfirmDelete(null)} className="px-4 py-2 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg text-gray-600 dark:text-[#aaa] hover:bg-gray-50 dark:bg-[#111] transition-colors">Cancelar</button>
-                <button onClick={() => handleDeleteTemplate(confirmDelete.id)} className="px-4 py-2 text-sm bg-red-50 dark:bg-red-900/200 text-white rounded-lg hover:bg-red-600 transition-colors">Excluir</button>
-              </div>
-            </div>
-          </div>
+          <Modal
+            open
+            onClose={() => setConfirmDelete(null)}
+            size="sm"
+            tone="danger"
+            title="Excluir template"
+            icon={<Trash2 size={16} className="text-red-500" />}
+            footer={
+              <>
+                <button onClick={() => setConfirmDelete(null)} className="px-4 py-2 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg text-gray-600 dark:text-[#aaa] hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors">Cancelar</button>
+                <button onClick={() => handleDeleteTemplate(confirmDelete.id)} className="px-4 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors">Excluir</button>
+              </>
+            }
+          >
+            <p className="text-sm text-gray-500 dark:text-[#808080]">Tem certeza que deseja excluir "{confirmDelete.name}"? Esta acao nao pode ser desfeita.</p>
+          </Modal>
         )}
       </div>
     </>
@@ -370,7 +427,7 @@ function TemplateDetailPanel({ template, onClose, onEdit, onDuplicate, onApply, 
   return (
     <div className="fixed inset-0 z-40 flex justify-end" onClick={onClose}>
       <div className="absolute inset-0 bg-black/10 fade-in"></div>
-      <div className="relative w-[480px] h-full bg-white dark:bg-[#141414] border-l border-gray-200 dark:border-white/[0.06] flex flex-col slide-in-right overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <div className="relative w-full max-w-[480px] h-full bg-white dark:bg-[#141414] border-l border-gray-200 dark:border-white/[0.06] flex flex-col slide-in-right overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-white/[0.06]">
           <div className="flex items-center gap-2.5">
             <span className="w-3 h-3 rounded-sm shrink-0" style={{ background: cat?.color }}></span>
@@ -491,18 +548,25 @@ function TemplateModal({ template, onClose, onSave }) {
   const selectedItems = KNOWLEDGE_ITEMS.filter(k => form.contents.includes(k.id));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 fade-in" onClick={onClose}>
-      <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-xl w-[900px] max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-white/[0.06]">
-          <h3 className="text-base text-gray-900 dark:text-[#ededed]">{template?.id ? 'Editar Template' : 'Novo Template'}</h3>
-          <button onClick={onClose} className="p-1.5 rounded hover:bg-gray-100 dark:bg-[#1a1a1a] text-gray-400 dark:text-[#666] hover:text-gray-600 dark:text-[#aaa] transition-colors">
-            <X size={16} />
+    <Modal
+      open
+      onClose={onClose}
+      size="xl"
+      title={template?.id ? 'Editar Template' : 'Novo Template'}
+      subtitle="Configure o treinamento e os conteudos da IA"
+      icon={<FileText size={16} className="text-[var(--zelt-primary)]" />}
+      bodyClassName="flex overflow-hidden p-0"
+      footer={
+        <div className="flex items-center justify-end gap-2.5 w-full">
+          <button onClick={onClose} className="px-4 py-2 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg text-gray-600 dark:text-[#aaa] hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors">Cancelar</button>
+          <button onClick={handleSubmit} className="px-4 py-2 text-sm bg-[var(--zelt-primary)] text-white rounded-lg hover:bg-[var(--zelt-primary)]/80 transition-colors">
+            {template?.id ? 'Salvar alteracoes' : 'Criar template'}
           </button>
         </div>
-
-        <div className="flex-1 flex overflow-hidden">
-          {/* FORM */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-4 border-r border-gray-100 dark:border-white/[0.06]">
+      }
+    >
+      {/* FORM */}
+      <div className="flex-1 min-w-0 overflow-y-auto p-5 space-y-4 md:border-r border-gray-100 dark:border-white/[0.06]">
             <div>
               <label className="text-xs text-gray-400 dark:text-[#666] uppercase tracking-wider block mb-1.5">Nome *</label>
               <input type="text" value={form.name} onChange={(e) => handleChange('name', e.target.value)} placeholder="Ex: SaaS B2B - Atendimento padrao"
@@ -570,7 +634,7 @@ function TemplateModal({ template, onClose, onSave }) {
           </div>
 
           {/* PREVIEW */}
-          <div className="w-[280px] shrink-0 p-5 bg-gray-50/50 dark:bg-[#111] overflow-y-auto">
+          <div className="hidden md:block w-[280px] shrink-0 p-5 bg-gray-50/50 dark:bg-[#111] overflow-y-auto">
             <h4 className="text-xs text-gray-400 dark:text-[#666] uppercase tracking-wider mb-3">Pre-visualizacao</h4>
             <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-lg p-4 space-y-3">
               <div>
@@ -618,15 +682,6 @@ function TemplateModal({ template, onClose, onSave }) {
               )}
             </div>
           </div>
-        </div>
-
-        <div className="flex justify-end gap-2.5 px-6 py-4 border-t border-gray-100 dark:border-white/[0.06]">
-          <button onClick={onClose} className="px-4 py-2 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg text-gray-600 dark:text-[#aaa] hover:bg-gray-50 dark:bg-[#111] transition-colors">Cancelar</button>
-          <button onClick={handleSubmit} className="px-4 py-2 text-sm bg-[var(--zelt-primary)] text-white rounded-lg hover:bg-[var(--zelt-primary)]/80 transition-colors">
-            {template?.id ? 'Salvar alteracoes' : 'Criar template'}
-          </button>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

@@ -14,8 +14,7 @@ export default function LandingPage() {
       [&::-webkit-scrollbar-track]:border-l
       [&::-webkit-scrollbar-track]:border-gray-200
       [&::-webkit-scrollbar-thumb]:bg-[#111]
-      [&::-webkit-scrollbar-thumb]:rounded-full
-      [hover:&::-webkit-scrollbar-thumb]:bg-[#6300ff]"
+      [&::-webkit-scrollbar-thumb]:rounded-full"
     >
       <Header />
       <Hero />

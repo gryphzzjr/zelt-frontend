@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import {
   Search, X, ChevronRight, ChevronDown, BookOpen, MessageSquare,
   Phone, Mail, Clock, ThumbsUp, ThumbsDown, ExternalLink, ArrowLeft,
-  Zap, Shield, Users, Calendar, FileText, Database, Settings,
+  Zap, Shield, Calendar, FileText, Database, Settings,
   Package, CreditCard, HelpCircle, Star, Hash, AlertCircle,
   Send, Heart,
 } from 'lucide-react';
@@ -13,20 +13,18 @@ const QUICK_ACCESS = [
   { id: 'treinar-ia', title: 'Treinar a IA', description: 'Configure prompts e respostas automaticas', icon: Settings, color: '#4285F4', bg: 'bg-[#4285F4]/10' },
   { id: 'base-conhecimento', title: 'Base de Conhecimento', description: 'Importe documentos e fontes de dados', icon: Database, color: '#EA4335', bg: 'bg-[#EA4335]/10' },
   { id: 'integracoes', title: 'Integracoes', description: 'Conecte servicos externos', icon: Package, color: '#009EE3', bg: 'bg-[#009EE3]/10' },
-  { id: 'equipe', title: 'Equipe', description: 'Gerencie membros e permissoes', icon: Users, color: '#0F9D58', bg: 'bg-[#0F9D58]/10' },
   { id: 'clientes', title: 'Clientes', description: 'Visualize e gerencie seus clientes', icon: Heart, color: '#E91E63', bg: 'bg-[#E91E63]/10' },
-  { id: 'tarefas', title: 'Tarefas', description: 'Organize e acompanhe tarefas da equipe', icon: FileText, color: '#FF8C00', bg: 'bg-[#FF8C00]/10' },
+  { id: 'tarefas', title: 'Tarefas', description: 'Organize e acompanhe suas tarefas', icon: FileText, color: '#FF8C00', bg: 'bg-[#FF8C00]/10' },
   { id: 'agenda', title: 'Agenda', description: 'Gerencie compromissos e eventos', icon: Calendar, color: '#635BFF', bg: 'bg-[#635BFF]/10' },
 ];
 
 const ARTICLES = [
   { id: 'como-comecar', title: 'Como comecar a usar o Zelt.AI', category: 'Primeiros Passos', updated: '15/07/2026', readTime: '3 min', icon: Zap, content: {
     sections: [
-      { title: 'Criando sua conta', text: 'Acesse zelt.ai e clique em "Comecar Gratis". Preencha seus dados, verifique o email e faca login pela primeira vez.' },
-      { title: 'Configurando o workspace', text: 'Ao entrar, voce sera direcionado para o onboarding. Escolha o nome do workspace, faca upload do logotipo e configure as preferencias basicas.' },
+      { title: 'Criando sua conta', text: 'Acesse zelt.ai e clique em "Iniciar teste gratis". Preencha seus dados, verifique o email e faca login pela primeira vez. Voce tera 3 dias de teste gratis.' },
+      { title: 'Configurando sua conta', text: 'Ao entrar, voce sera direcionado para o onboarding. Defina seu segmento, dados da empresa e conecte o WhatsApp para comecar.' },
       { title: 'Conectando canais', text: 'Na aba Integracoes, conecte os canais que deseja utilizar. O WhatsApp e o mais popular — basta escanear o QR Code pela Evolution API.' },
       { title: 'Treinando a IA', text: 'Acesse IA > Prompts para configurar como a inteligencia artificial deve responder seus clientes. Defina o tom de voz, regras e fluxos de atendimento.' },
-      { title: 'Convidando a equipe', text: 'Va em Equipe > Membros e envie convites por email. Escolha o cargo e as permissoes de cada membro.' },
     ],
     related: ['configurar-whatsapp', 'treinar-ia']
   }},
@@ -58,24 +56,15 @@ const ARTICLES = [
     ],
     related: ['treinar-ia', 'integracoes']
   }},
-  { id: 'gerenciar-equipe', title: 'Como gerenciar a equipe', category: 'Equipe', updated: '11/07/2026', readTime: '3 min', icon: Users, content: {
-    sections: [
-      { title: 'Convidando membros', text: 'Va em Equipe > Membros e clique em "Convidar". Envie o convite por email ou compartilhe o link de convite.' },
-      { title: 'Definindo cargos', text: 'Cada membro recebe um cargo que define suas permissoes. Cargos padrao incluem Administrador, Gerente e Atendente.' },
-      { title: 'Gerenciando permissoes', text: 'Acesse Equipe > Cargos e Permissoes para criar cargos personalizados com permissoes especificas para cada modulo.' },
-    ],
-    related: ['como-comecar']
-  }},
 ];
 
 const FAQ = [
   { question: 'Como conectar meu WhatsApp?', answer: 'Va em Integracoes > WhatsApp, clique em "Conectar Numero", escolha a instancia Evolution API e escaneie o QR Code com o WhatsApp no celular. A conexao e instantanea.' },
-  { question: 'Como adicionar novos membros?', answer: 'Acesse Equipe > Membros e clique em "Convidar". Preencha o email, escolha o cargo e envie o convite. O membro recebera um email com o link para aceitar.' },
   { question: 'Como treinar a IA?', answer: 'Navegue ate IA > Prompts para configurar o comportamento da IA. Defina o tom de voz, regras e respostas. Use o chat de teste para ajustar antes de ativar.' },
   { question: 'Como importar documentos para a Base de Conhecimento?', answer: 'Acesse IA > Base de Conhecimento, clique em "Nova Fonte" e selecione o tipo de arquivo. PDFs, Word e TXT sao aceitos diretamente. Google Sheets e Drive podem ser sincronizados via Integracoes.' },
   { question: 'Como alterar meu plano?', answer: 'Va em Configuracoes > Cobranca. Clique em "Alterar Plano" para ver as opcoes disponiveis. A alteracao e aplicada imediatamente e o valor e proporcional.' },
   { question: 'A IA responde automaticamente?', answer: 'Sim. Apos configurar os prompts e conectar o WhatsApp, a IA responde automaticamente todas as mensagens recebidas. Voce pode desativar a qualquer momento.' },
-  { question: 'Como criar tarefas para a equipe?', answer: 'Acesse Operacoes > Lista de Tarefas e clique em "Nova Tarefa". Defina titulo, responsavel, prioridade, data limite e vincule a um cliente ou conversa.' },
+  { question: 'Como criar tarefas?', answer: 'Acesse Operacoes > Lista de Tarefas e clique em "Nova Tarefa". Defina titulo, prioridade, data limite e vincule a um cliente ou conversa.' },
   { question: 'Meus dados estao seguros?', answer: 'Sim. Utilizamos criptografia em repouso e em transito, backups diarios e seguimos as melhores praticas de seguranca. Consulte nossa Politica de Privacidade para mais detalhes.' },
 ];
 
@@ -84,7 +73,6 @@ const CATEGORIES = [
   { id: 'Primeiros Passos', label: 'Primeiros Passos' },
   { id: 'Integracoes', label: 'Integracoes' },
   { id: 'Inteligencia Artificial', label: 'IA' },
-  { id: 'Equipe', label: 'Equipe' },
 ];
 
 export default function AjudaView() {
@@ -175,7 +163,7 @@ export default function AjudaView() {
           <>
             <div>
               <h2 className="text-lg text-gray-900 dark:text-[#ededed] mb-4">Acesso Rapido</h2>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="cards-carousel">
                 {QUICK_ACCESS.map(item => {
                   const Icon = item.icon;
                   return (

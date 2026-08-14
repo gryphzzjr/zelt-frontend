@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { TbCheck, TbCircleDot } from 'react-icons/tb';
+import { Link } from 'react-router-dom';
+import { TbCheck, TbCircleDot, TbFlame } from 'react-icons/tb';
 import { AnimatedSection } from './ScrollReveal';
 
 export default function PricingAndFaq() {
@@ -7,67 +8,34 @@ export default function PricingAndFaq() {
 
   const plans = [
     {
-      name: 'Teste Grátis',
-      description: 'Experimente a plataforma completa por 3 dias sem compromisso.',
-      isTrial: true,
-      monthlyPrice: 0,
-      annualPrice: 0,
-      periodLabel: '3 dias',
+      name: 'Professional',
+      description: 'Para quem precisa de atendimento ilimitado com automação completa.',
+      monthlyPrice: 149,
+      annualPrice: 131.12,
+      popular: true,
       features: [
-        '1 Instância de WhatsApp',
-        'Treinamento de IA',
-        'Painel de conversas',
-        'CRM integrado'
+        '3 dias de teste grátis',
+        'Conversas ilimitadas',
+        '10.000 contatos',
+        '20 GB de base de conhecimento',
+        'Automações avançadas',
+        'Relatórios completos',
+        'Integrações extras'
       ],
       buttonText: 'Iniciar teste grátis'
     },
     {
-      name: 'Starter',
-      description: 'Ideal para pequenas empresas automatizarem o atendimento no WhatsApp.',
-      monthlyPrice: 197,
-      annualPrice: 173.36,
-      features: [
-        'IA para WhatsApp',
-        'Respostas automáticas',
-        'Treinamento básico de IA',
-        'Painel de conversas',
-        'CRM integrado',
-        'Integrações essenciais'
-      ],
-      buttonText: 'Começar agora'
-    },
-    {
-      name: 'Professional',
-      description: 'Para empresas em crescimento que precisam de mais controle e automação.',
-      monthlyPrice: 425,
-      annualPrice: 374,
-      popular: true,
-      features: [
-        'Tudo do Starter',
-        'Múltiplos atendentes',
-        'CRM integrado',
-        'Automações avançadas',
-        'Base de conhecimento maior',
-        'Relatórios completos',
-        'Integrações extras'
-      ],
-      buttonText: 'Assinar Professional'
-    },
-    {
       name: 'Enterprise',
-      description: 'Soluções sob medida para médias e grandes empresas com alto volume.',
-      monthlyPrice: 1423,
-      annualPrice: 1252.24,
+      description: 'Soluções sob medida para operações de alto volume e requisitos especiais.',
+      monthlyPrice: null,
+      annualPrice: null,
       features: [
-        'Tudo do Professional',
-        'Usuários ilimitados',
-        'Suporte prioritário',
+        '3 dias de teste grátis',
+        '100 GB de base de conhecimento',
+        'Contatos ilimitados',
         'Integrações personalizadas',
         'APIs dedicadas',
-        'Múltiplas instâncias',
-        'Treinamento avançado da IA',
-        'CRM integrado',
-        'Recursos exclusivos'
+        'Suporte dedicado com SLA'
       ],
       buttonText: 'Falar com Especialista'
     }
@@ -87,6 +55,10 @@ export default function PricingAndFaq() {
             <span className="text-gray-400">Escolha o plano ideal para você.</span>
           </h2>
 
+          <p className="mt-4 text-sm text-gray-500">
+            Teste grátis por 3 dias em todos os planos. Sem cartão de crédito, sem compromisso.
+          </p>
+
           <div className="mt-8 inline-flex items-center gap-3 rounded-full border border-gray-200 p-1 bg-gray-50">
             <button
               onClick={() => setIsAnnual(false)}
@@ -104,7 +76,7 @@ export default function PricingAndFaq() {
           </div>
         </AnimatedSection>
 
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 max-w-7xl mx-auto mb-24">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 max-w-4xl mx-auto mb-24">
           {plans.map((plan, index) => (
             <AnimatedSection key={index} delay={index * 80}>
               <div
@@ -122,17 +94,11 @@ export default function PricingAndFaq() {
                         Mais popular
                       </span>
                     )}
-                    {plan.isTrial && (
-                      <span className="text-[10px] font-semibold bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full uppercase tracking-wider border border-emerald-200">
-                        Grátis
-                      </span>
-                    )}
                   </div>
 
-                  {plan.isTrial ? (
+                  {plan.monthlyPrice === null ? (
                     <div className="mt-4 text-3xl font-semibold tracking-tight text-[#111111] h-[44px] flex items-baseline">
-                      Grátis
-                      <span className="ml-2 text-xs font-normal text-gray-500">por 3 dias</span>
+                      Sob consulta
                     </div>
                   ) : (
                     <div className="mt-4 flex flex-col text-[#111111]">
@@ -152,6 +118,11 @@ export default function PricingAndFaq() {
                     </div>
                   )}
 
+                  <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 px-3 py-1 text-[11px] font-semibold">
+                    <TbFlame className="h-3.5 w-3.5" />
+                    3 dias de teste grátis
+                  </div>
+
                   <p className="mt-4 text-xs text-gray-500 leading-relaxed min-h-[48px]">{plan.description}</p>
 
                   <ul className="mt-6 space-y-3.5 border-t border-gray-100 pt-6">
@@ -164,17 +135,18 @@ export default function PricingAndFaq() {
                   </ul>
                 </div>
 
-                <button
+                <Link
+                  to={plan.monthlyPrice === null
+                    ? '/enterprise'
+                    : `/checkout?plan=${plan.name.toLowerCase()}&period=${isAnnual ? 'annual' : 'monthly'}`}
                   className={`mt-8 block w-full text-center rounded border py-2.5 text-xs font-medium transition-all ${
                     plan.popular
                       ? 'bg-[#6300ff] border-[#6300ff] text-white hover:bg-[#5200d6]'
-                      : plan.isTrial
-                        ? 'bg-[#111111] border-[#111111] text-white hover:bg-black'
-                        : 'border-gray-200 text-black bg-white hover:bg-gray-50 hover:border-gray-300'
+                      : 'border-gray-200 text-black bg-white hover:bg-gray-50 hover:border-gray-300'
                   }`}
                 >
                   {plan.buttonText}
-                </button>
+                </Link>
               </div>
             </AnimatedSection>
           ))}
@@ -188,10 +160,10 @@ export default function PricingAndFaq() {
 
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             {[
+              { q: 'Como funciona o teste grátis?', a: 'Todos os planos incluem 3 dias de teste grátis. Você experimenta a plataforma completa antes de assinar.' },
+              { q: 'O teste grátis precisa de cartão de crédito?', a: 'Não. Você testa os 3 dias sem cartão de crédito e só assina se quiser continuar.' },
               { q: 'Como funciona a cobrança do plano anual?', a: 'O plano anual é cobrado em uma única parcela com 12% de desconto sobre o valor equivalente aos 12 meses de assinatura.' },
-              { q: 'Posso mudar de plano depois?', a: 'Sim! Você pode fazer upgrade ou downgrade a qualquer momento pelo painel de controle sem perder seus dados.' },
-              { q: 'Tem limite de mensagens?', a: 'O plano Starter possui limite mensal de mensagens. Planos Professional e Enterprise possuem limites expandidos e sob consulta.' },
-              { q: 'Posso cancelar quando quiser?', a: 'Sim, sem multa nem fidelidade. Cancele direto pelo painel a qualquer momento.' },
+              { q: 'Tem limite de mensagens?', a: 'O Professional oferece conversas ilimitadas. O Enterprise é sob consulta.' },
             ].map((item, i) => (
               <div key={i} className="border-b border-gray-100 pb-4">
                 <h4 className="text-sm font-medium text-[#111]">{item.q}</h4>

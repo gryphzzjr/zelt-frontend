@@ -44,9 +44,8 @@ export default function LoginPage() {
         return;
       }
 
-      // Redireciona para dashboard com userId na URL
-      const userId = result.user.id;
-      navigate(`/workspace/${userId}/dashboard`, { replace: true });
+      // Redireciona para o painel
+      navigate('/dashboard', { replace: true });
 
     } catch (err) {
       setError(err.message || 'Erro ao fazer login. Tente novamente.');
@@ -139,7 +138,7 @@ export default function LoginPage() {
 
           <p className="text-center text-[13px] text-gray-500">
             Não tem uma conta?{' '}
-            <Link to="/register" className="font-medium text-[#6300ff] hover:underline">Criar conta grátis</Link>
+            <Link to="/register" className="font-medium text-[#6300ff] hover:underline">Criar conta</Link>
           </p>
 
           <div className="flex gap-5 text-[11px] text-gray-400 uppercase tracking-wider font-medium justify-center">

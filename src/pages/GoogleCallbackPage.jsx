@@ -27,7 +27,7 @@ export default function GoogleCallbackPage() {
       try {
         const user = JSON.parse(decodeURIComponent(userParam));
         await completeGoogleLogin(token, user);
-        navigate(`/workspace/${user.id}/dashboard`, { replace: true });
+        navigate('/dashboard', { replace: true });
       } catch (err) {
         setError('Erro ao entrar com Google. Tente novamente.');
       }

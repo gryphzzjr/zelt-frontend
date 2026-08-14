@@ -6,9 +6,9 @@ import FooterSection from '../components/Footer';
 
 const enterpriseFeatures = [
   {
-    icon: TbUsers,
-    title: 'Usuários Ilimitados',
-    description: 'Adicione quantos atendentes, gestores e administradores precisar sem custo adicional.',
+    icon: TbChartBar,
+    title: 'Alto Volume de Atendimento',
+    description: 'Capacidade ampliada para operações com grande volume de mensagens e contatos, sem limites restritivos.',
   },
   {
     icon: TbApi,
@@ -17,8 +17,8 @@ const enterpriseFeatures = [
   },
   {
     icon: TbServer,
-    title: 'Múltiplas Instâncias',
-    description: 'Gerencie various números de WhatsApp e equipes em uma única conta corporativa.',
+    title: 'Infraestrutura Dedicada',
+    description: 'Recursos dedicados e dimensionados para manter performance e estabilidade em qualquer cenário.',
   },
   {
     icon: TbHeadset,
@@ -28,7 +28,7 @@ const enterpriseFeatures = [
   {
     icon: TbLock,
     title: 'Segurança Empresarial',
-    description: 'SSO, autenticação de dois fatores, logs de auditoria e conformidade total com LGPD.',
+    description: 'Autenticação de dois fatores, logs de auditoria e conformidade total com LGPD.',
   },
   {
     icon: TbSettings,
@@ -36,9 +36,9 @@ const enterpriseFeatures = [
     description: 'Desenvolvemos integrações sob medida para CRMs, ERPs e sistemas legados da sua empresa.',
   },
   {
-    icon: TbChartBar,
-    title: 'Analytics Avançado',
-    description: 'Dashboards customizados, relatórios executivos e métricas de performance em tempo real.',
+    icon: TbUsers,
+    title: 'Treinamento Avançado da IA',
+    description: 'Modelagem avançada dos prompts e base de conhecimento para cenários complexos e específicos.',
   },
   {
     icon: TbShieldCheck,
@@ -51,7 +51,7 @@ const stats = [
   { value: '99.9%', label: 'Uptime garantido' },
   { value: '<2h', label: 'Tempo de resposta' },
   { value: '24/7', label: 'Suporte dedicado' },
-  { value: '∞', label: 'Usuários ilimitados' },
+  { value: '100 GB', label: 'Base de conhecimento' },
 ];
 
 export default function EnterprisePage() {
@@ -150,11 +150,10 @@ export default function EnterprisePage() {
               <ul className="flex flex-col gap-4">
                 {[
                   'Criptografia AES-256 em repouso e TLS 1.3 em trânsito',
-                  'SSO via SAML 2.0 e OpenID Connect',
                   'Autenticação de dois fatores (2FA) obrigatória',
                   'Logs de auditoria completos e imutáveis',
                   'Conformidade com LGPD, SOC 2 e ISO 27001',
-                  'Isolamento de dados por tenant',
+                  'Backups diários com retenção estendida',
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-3 text-sm text-gray-700">
                     <TbCheck className="h-5 w-5 text-[#6300ff] shrink-0 mt-0.5" />

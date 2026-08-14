@@ -8,10 +8,10 @@ const LiveChatView = lazy(() => import("../components/views/LiveChatView"));
 const BaseConhecimentoView = lazy(() => import("../components/views/BaseConhecimentoView"));
 const PromptsView = lazy(() => import("../components/views/PromptsView"));
 const RespostasRapidasView = lazy(() => import("../components/views/RespostasRapidasView"));
-const MembersView = lazy(() => import("../components/views/MembersView"));
-const RolesPermissionsView = lazy(() => import("../components/views/RolesPermissionsView"));
 const TarefasView = lazy(() => import("../components/views/TarefasView"));
 const AgendaView = lazy(() => import("../components/views/AgendaView"));
+const SheetsView = lazy(() => import("../components/views/SheetsView"));
+const MediaView = lazy(() => import("../components/views/MediaView"));
 const TemplatesView = lazy(() => import("../components/views/TemplatesView"));
 const IntegracoesView = lazy(() => import("../components/views/IntegracoesView"));
 const WhatsAppView = lazy(() => import("../components/views/WhatsAppView"));
@@ -22,6 +22,7 @@ const GmailView = lazy(() => import("../components/views/GmailView"));
 const ApiWebhooksView = lazy(() => import("../components/views/ApiWebhooksView"));
 const ConfiguracoesView = lazy(() => import("../components/views/ConfiguracoesView"));
 const AjudaView = lazy(() => import("../components/views/AjudaView"));
+const SearchView = lazy(() => import("../components/views/SearchView"));
 
 function ViewLoader() {
     return (
@@ -42,11 +43,10 @@ const VIEWS = {
     "ia/respostas-automaticas": RespostasRapidasView,
     "ia/templates": TemplatesView,
 
-    "equipe/membros": MembersView,
-    "equipe/cargos-permissoes": RolesPermissionsView,
-
     "operacoes/tarefas": TarefasView,
     "operacoes/agenda": AgendaView,
+    "operacoes/planilhas": SheetsView,
+    "operacoes/arquivos": MediaView,
 
     integracoes: IntegracoesView,
     "integracoes/whatsapp": WhatsAppView,
@@ -58,6 +58,8 @@ const VIEWS = {
 
     configuracoes: ConfiguracoesView,
     ajuda: AjudaView,
+
+    search: SearchView,
 };
 
 export default function Dashboard() {
@@ -65,6 +67,8 @@ export default function Dashboard() {
         <DashboardLayout
             viewComponents={VIEWS}
             defaultView="dashboard"
+            fullscreenViews={["atendimentos/chat"]}
+            mobileFullscreenViews={["search", "configuracoes"]}
         />
     );
 }

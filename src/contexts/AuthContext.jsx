@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
@@ -7,8 +7,6 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(null);
-    const [workspace, setWorkspace] = useState(null);
-    const [workspaces, setWorkspaces] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // Carrega do localStorage ao montar
@@ -21,58 +19,13 @@ export function AuthProvider({ children }) {
                 const parsed = JSON.parse(storedUser);
                 setToken(storedToken);
                 setUser(parsed);
-                fetchWorkspaces(storedToken);
             } catch {
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
-                setLoading(false);
             }
-        } else {
-            setLoading(false);
         }
+        setLoading(false);
     }, []);
-
-    const fetchWorkspaces = async (authToken) => {
-        try {
-            const res = await fetch(`${API_URL}/workspace`, {
-                headers: { 'Authorization': `Bearer ${authToken}` }
-            });
-            const data = await res.json();
-
-            if (data.success) {
-                const all = [...(data.owned || []), ...(data.members || [])];
-                setWorkspaces(all);
-            }
-        } catch {
-            // Silently fail
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const switchWorkspace = useCallback((workspaceId) => {
-        const found = workspaces.find(w => w.id === workspaceId);
-        if (found) {
-            setWorkspace(found);
-        }
-    }, [workspaces]);
-
-    const selectWorkspaceById = useCallback(async (authToken, workspaceId) => {
-        try {
-            const res = await fetch(`${API_URL}/workspace/${workspaceId}`, {
-                headers: { 'Authorization': `Bearer ${authToken || token}` }
-            });
-            const data = await res.json();
-
-            if (data.success && data.workspace) {
-                setWorkspace(data.workspace);
-                return data.workspace;
-            }
-        } catch {
-            // Silently fail
-        }
-        return null;
-    }, [token]);
 
     const login = async (email, password, geo) => {
         const res = await fetch(`${API_URL}/auth/login`, {
@@ -97,17 +50,6 @@ export function AuthProvider({ children }) {
         setToken(data.token);
         setUser(data.user);
 
-        // Busca workspaces
-        const wsRes = await fetch(`${API_URL}/workspace`, {
-            headers: { 'Authorization': `Bearer ${data.token}` }
-        });
-        const wsData = await wsRes.json();
-
-        if (wsData.success) {
-            const all = [...(wsData.owned || []), ...(wsData.members || [])];
-            setWorkspaces(all);
-        }
-
         return { success: true, user: data.user };
     };
 
@@ -118,17 +60,14 @@ export function AuthProvider({ children }) {
         setToken(googleToken);
         setUser(googleUser);
 
-        const wsRes = await fetch(`${API_URL}/workspace`, {
-            headers: { 'Authorization': `Bearer ${googleToken}` }
-        });
-        const wsData = await wsRes.json();
-
-        if (wsData.success) {
-            const all = [...(wsData.owned || []), ...(wsData.members || [])];
-            setWorkspaces(all);
-        }
-
         return { success: true, user: googleUser };
+    };
+
+    const updateUser = (nextUser) => {
+        const merged = { ...(user || {}), ...nextUser };
+        setUser(merged);
+        localStorage.setItem('user', JSON.stringify(merged));
+        return merged;
     };
 
     const logout = () => {
@@ -136,23 +75,6 @@ export function AuthProvider({ children }) {
         localStorage.removeItem('user');
         setToken(null);
         setUser(null);
-        setWorkspace(null);
-        setWorkspaces([]);
-    };
-
-    const setAccountType = async (accountType) => {
-        const res = await fetch(`${API_URL}/auth/set-account-type`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ accountType })
-        });
-        const data = await res.json();
-        if (data.success && data.user) {
-            setUser(data.user);
-            localStorage.setItem('user', JSON.stringify(data.user));
-            return data.user;
-        }
-        throw new Error(data.message || 'Erro ao atualizar tipo de conta.');
     };
 
     const isAuthenticated = !!token && !!user;
@@ -161,16 +83,12 @@ export function AuthProvider({ children }) {
         <AuthContext.Provider value={{
             user,
             token,
-            workspace,
-            workspaces,
             loading,
             isAuthenticated,
             login,
             completeGoogleLogin,
-            logout,
-            setAccountType,
-            switchWorkspace,
-            selectWorkspaceById
+            updateUser,
+            logout
         }}>
             {children}
         </AuthContext.Provider>

@@ -31,7 +31,7 @@ export default function FooterSection() {
               className="rounded bg-[#6300ff] px-6 py-3.5 text-sm font-medium text-white hover:bg-[#5200d5] transition-colors flex items-center justify-center gap-2 shadow-xs"
             >
               <TbBrandWhatsapp className="h-5 w-5" />
-              Criar meu Bot Grátis
+              Criar meu Bot
             </Link>
             <Link
               to="/pricing"

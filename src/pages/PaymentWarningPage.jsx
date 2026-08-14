@@ -8,7 +8,7 @@ function formatBRL(value) {
   return Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-const PLANS = { starter: 'Starter', professional: 'Professional', enterprise: 'Enterprise' };
+const PLANS = { professional: 'Professional', enterprise: 'Enterprise' };
 
 function useCountdown(totalSeconds) {
   const [left, setLeft] = useState(totalSeconds);

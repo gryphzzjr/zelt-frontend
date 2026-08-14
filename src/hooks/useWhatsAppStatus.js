@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { evolutionApi } from '../lib/api';
 
-export function useWhatsAppStatus(workspaceId) {
+export function useWhatsAppStatus() {
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [instances, setInstances] = useState([]);
@@ -9,7 +9,7 @@ export function useWhatsAppStatus(workspaceId) {
   const check = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await evolutionApi.listInstances(workspaceId);
+      const res = await evolutionApi.listInstances();
       const raw = Array.isArray(res) ? res
         : Array.isArray(res?.data) ? res.data
         : Array.isArray(res?.instances) ? res.instances
@@ -29,7 +29,7 @@ export function useWhatsAppStatus(workspaceId) {
     } finally {
       setLoading(false);
     }
-  }, [workspaceId]);
+  }, []);
 
   useEffect(() => { check(); }, [check]);
 

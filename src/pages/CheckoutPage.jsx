@@ -7,23 +7,17 @@ import { HiOutlineExclamationCircle, HiOutlineEye, HiOutlineEyeOff } from 'react
 import { useToast } from '../components/Toast';
 
 const PLANS = {
-  starter: {
-    name: 'Starter',
-    monthly: 197,
-    annual: 173.36,
-    features: ['IA para WhatsApp', 'Respostas automáticas', 'Painel de conversas', 'CRM integrado'],
-  },
   professional: {
     name: 'Professional',
-    monthly: 425,
-    annual: 374,
-    features: ['Tudo do Starter', 'Múltiplos atendentes', 'Automações avançadas', 'Relatórios completos'],
+    monthly: 149,
+    annual: 131.12,
+    features: ['Conversas ilimitadas', '10.000 contatos', '20 GB de base de conhecimento', 'Automações avançadas', 'Relatórios completos'],
   },
   enterprise: {
     name: 'Enterprise',
-    monthly: 1423,
-    annual: 1252.24,
-    features: ['Tudo do Professional', 'Usuários ilimitados', 'Suporte prioritário', 'APIs dedicadas'],
+    monthly: null,
+    annual: null,
+    features: ['Suporte dedicado com SLA', 'Integrações personalizadas', 'APIs dedicadas', 'Treinamento avançado da IA'],
   },
 };
 
@@ -119,6 +113,12 @@ export default function CheckoutPage() {
   const planSlug = searchParams.get('plan') || 'professional';
   const period = searchParams.get('period') === 'annual' ? 'annual' : 'monthly';
   const plan = PLANS[planSlug] || PLANS.professional;
+
+  useEffect(() => {
+    if (!plan.monthlyPrice) {
+      navigate('/enterprise');
+    }
+  }, [plan, navigate]);
 
   const [method, setMethod] = useState('pix');
   const [couponInput, setCouponInput] = useState('');

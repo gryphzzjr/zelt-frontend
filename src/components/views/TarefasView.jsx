@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import {
-  Search, Plus, ChevronDown, ChevronUp, MoreHorizontal,
+  Search, Plus, MoreHorizontal,
   Eye, Edit3, Copy, CheckCircle, Trash2, X,
   ArrowUpDown, ArrowUp, ArrowDown, CheckSquare, Square,
-  Calendar, Clock, User, Tag, MessageSquare, Link2,
-  AlertTriangle, Filter, ChevronLeft, ChevronRight,
-  FileText, Users, Loader2, Send, History,
+  Calendar, Clock, User, MessageSquare, Link2,
+  AlertTriangle, ChevronLeft, ChevronRight,
+  FileText, Loader2, Send, History,
 } from 'lucide-react';
-import { taskApi, memberApi } from '../../lib/api';
+import { taskApi } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 
 const PRIORITIES = {
@@ -89,14 +89,14 @@ function getInitials(name) {
 }
 
 function mapBackendTask(t) {
-  const assigneeName = t.assignee?.name || '';
+  const assigneeName = t.user?.name || '';
   return {
     ...t,
     status: FRONTEND_STATUS_MAP[t.status] || t.status,
     priority: FRONTEND_PRIORITY_MAP[t.priority] || t.priority,
     origin: FRONTEND_ORIGIN_MAP[t.origin] || t.origin,
-    assignee: t.assignee ? {
-      id: t.assignee.id,
+    assignee: t.user ? {
+      id: t.user.id,
       name: assigneeName,
       initials: getInitials(assigneeName),
       color: getMemberColor(assigneeName),
@@ -112,7 +112,6 @@ function mapFrontendTask(data) {
   if (data.description !== undefined) result.description = data.description;
   if (data.priority !== undefined) result.priority = BACKEND_PRIORITY_MAP[data.priority] || data.priority;
   if (data.origin !== undefined) result.origin = BACKEND_ORIGIN_MAP[data.origin] || data.origin;
-  if (data.assigneeId !== undefined) result.assigneeId = data.assigneeId || null;
   if (data.dueDate !== undefined) result.dueDate = data.dueDate || null;
   if (data.dueTime !== undefined) result.dueTime = data.dueTime || null;
   if (data.tags !== undefined) result.tags = Array.isArray(data.tags) ? data.tags : [];
@@ -138,15 +137,12 @@ function formatDate(dateStr) {
 const PER_PAGE = 8;
 
 export default function TarefasView() {
-  const { workspace } = useAuth();
-  const workspaceId = workspace?.id;
+  const { user } = useAuth();
 
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
-  const [membersList, setMembersList] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterAssignee, setFilterAssignee] = useState('todos');
   const [filterPriority, setFilterPriority] = useState('todas');
   const [filterStatus, setFilterStatus] = useState('todos');
   const [filterOrigin, setFilterOrigin] = useState('todas');
@@ -161,7 +157,6 @@ export default function TarefasView() {
   const [rowMenuOpen, setRowMenuOpen] = useState(null);
   const [rowMenuPos, setRowMenuPos] = useState({ top: 0, right: 0 });
   const [confirmDelete, setConfirmDelete] = useState(null);
-  const [bulkAction, setBulkAction] = useState(null);
   const [hasData, setHasData] = useState(false);
 
   const menuRef = useRef(null);
@@ -172,10 +167,9 @@ export default function TarefasView() {
   };
 
   const fetchTasks = async () => {
-    if (!workspaceId) return;
     try {
       setLoading(true);
-      const res = await taskApi.list(workspaceId);
+      const res = await taskApi.list();
       const mapped = (res.tasks || []).map(mapBackendTask);
       setTasks(mapped);
       setHasData(mapped.length > 0);
@@ -187,31 +181,9 @@ export default function TarefasView() {
     }
   };
 
-  const fetchMembers = async () => {
-    if (!workspaceId) return;
-    try {
-      const res = await memberApi.list(workspaceId);
-      const members = (res.members || []).map(m => {
-        const name = m.user?.name || '';
-        return {
-          id: m.user?.id || m.id,
-          name,
-          initials: getInitials(name),
-          color: getMemberColor(name),
-        };
-      });
-      setMembersList(members);
-    } catch (err) {
-      console.error('Failed to fetch members:', err);
-    }
-  };
-
   useEffect(() => {
-    if (workspaceId) {
-      fetchTasks();
-      fetchMembers();
-    }
-  }, [workspaceId]);
+    fetchTasks();
+  }, []);
 
   useEffect(() => {
     const handler = (e) => {
@@ -243,7 +215,6 @@ export default function TarefasView() {
         t.tags.some(tag => tag.toLowerCase().includes(q))
       );
     }
-    if (filterAssignee !== 'todos') result = result.filter(t => t.assignee.id === Number(filterAssignee));
     if (filterPriority !== 'todas') result = result.filter(t => t.priority === filterPriority);
     if (filterStatus !== 'todos') result = result.filter(t => t.status === filterStatus);
     if (filterOrigin !== 'todas') result = result.filter(t => t.origin === filterOrigin);
@@ -267,7 +238,7 @@ export default function TarefasView() {
     });
 
     return result;
-  }, [tasks, searchQuery, filterAssignee, filterPriority, filterStatus, filterOrigin, filterDue, sortKey, sortDir]);
+  }, [tasks, searchQuery, filterPriority, filterStatus, filterOrigin, filterDue, sortKey, sortDir]);
 
   const totalPages = Math.ceil(filteredTasks.length / PER_PAGE);
   const paginatedTasks = filteredTasks.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE);
@@ -278,12 +249,12 @@ export default function TarefasView() {
     em_andamento: tasks.filter(t => t.status === 'em_andamento').length,
     concluidas: tasks.filter(t => t.status === 'concluida').length,
     atrasadas: tasks.filter(t => getDaysUntil(t.dueDate) < 0 && t.status !== 'concluida' && t.status !== 'cancelada').length,
-    minhas: membersList.length > 0 ? tasks.filter(t => t.assignee.id === membersList[0].id).length : 0,
-  }), [tasks, membersList]);
+    minhas: user?.id ? tasks.filter(t => t.assignee.id === user.id).length : 0,
+  }), [tasks, user]);
 
   const handleDelete = async (id) => {
     try {
-      await taskApi.delete(workspaceId, id);
+      await taskApi.delete(id);
       setTasks(prev => prev.filter(t => t.id !== id));
       setConfirmDelete(null);
       if (showDetailPanel?.id === id) setShowDetailPanel(null);
@@ -297,7 +268,7 @@ export default function TarefasView() {
   const handleBulkDelete = async () => {
     try {
       for (const id of selectedIds) {
-        await taskApi.delete(workspaceId, id);
+        await taskApi.delete(id);
       }
       setTasks(prev => prev.filter(t => !selectedIds.includes(t.id)));
       setSelectedIds([]);
@@ -313,7 +284,7 @@ export default function TarefasView() {
   const handleBulkStatus = async (status) => {
     try {
       for (const id of selectedIds) {
-        await taskApi.update(workspaceId, id, { status: BACKEND_STATUS_MAP[status] || status });
+        await taskApi.update(id, { status: BACKEND_STATUS_MAP[status] || status });
       }
       await fetchTasks();
       setSelectedIds([]);
@@ -327,7 +298,7 @@ export default function TarefasView() {
 
   const handleComplete = async (id) => {
     try {
-      await taskApi.update(workspaceId, id, { status: 'COMPLETED' });
+      await taskApi.update(id, { status: 'COMPLETED' });
       await fetchTasks();
       setRowMenuOpen(null);
       showToastMessage('Tarefa concluida');
@@ -344,12 +315,11 @@ export default function TarefasView() {
         description: taskData.description,
         priority: taskData.priority,
         origin: taskData.origin || 'manual',
-        assigneeId: taskData.assigneeId,
         dueDate: taskData.dueDate,
         dueTime: taskData.dueTime,
         tags: taskData.tags,
       });
-      await taskApi.create(workspaceId, data);
+      await taskApi.create(data);
       await fetchTasks();
       setShowCreateModal(false);
       showToastMessage('Tarefa criada');
@@ -366,12 +336,11 @@ export default function TarefasView() {
         description: task.description,
         priority: BACKEND_PRIORITY_MAP[task.priority] || task.priority,
         origin: BACKEND_ORIGIN_MAP[task.origin] || task.origin,
-        assigneeId: task.assignee?.id || null,
         dueDate: task.dueDate,
         dueTime: task.dueTime,
         tags: task.tags,
       };
-      await taskApi.create(workspaceId, data);
+      await taskApi.create(data);
       await fetchTasks();
       setRowMenuOpen(null);
       showToastMessage('Tarefa duplicada');
@@ -432,7 +401,7 @@ export default function TarefasView() {
               <div className="h-10 w-32 bg-gray-100 dark:bg-[#1a1a1a] rounded-lg animate-pulse"></div>
               <div className="h-10 w-32 bg-gray-100 dark:bg-[#1a1a1a] rounded-lg animate-pulse"></div>
             </div>
-            <div className="grid grid-cols-6 gap-3">
+            <div className="cards-carousel" style={{ '--cols': 6 }}>
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-lg p-4 flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-[#1a1a1a] animate-pulse"></div>
@@ -477,38 +446,102 @@ export default function TarefasView() {
                 <input type="text" placeholder="Buscar tarefas..." value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                   className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg bg-white dark:bg-[#141414] text-gray-900 dark:text-[#ededed] placeholder-gray-400 dark:placeholder-[#555] focus:border-[var(--zelt-primary)]/40 transition-colors" />
               </div>
-              <select value={filterAssignee} onChange={(e) => { setFilterAssignee(e.target.value); setCurrentPage(1); }}
-                className="px-3 py-2.5 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg bg-white dark:bg-[#141414] text-gray-600 dark:text-[#aaa] cursor-pointer">
-                <option value="todos">Responsavel</option>
-                {membersList.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-              </select>
-              <select value={filterPriority} onChange={(e) => { setFilterPriority(e.target.value); setCurrentPage(1); }}
-                className="px-3 py-2.5 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg bg-white dark:bg-[#141414] text-gray-600 dark:text-[#aaa] cursor-pointer">
-                <option value="todas">Prioridade</option>
-                {Object.entries(PRIORITIES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-              </select>
-              <select value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }}
-                className="px-3 py-2.5 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg bg-white dark:bg-[#141414] text-gray-600 dark:text-[#aaa] cursor-pointer">
-                <option value="todos">Status</option>
-                {Object.entries(STATUSES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-              </select>
-              <select value={filterOrigin} onChange={(e) => { setFilterOrigin(e.target.value); setCurrentPage(1); }}
-                className="px-3 py-2.5 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg bg-white dark:bg-[#141414] text-gray-600 dark:text-[#aaa] cursor-pointer">
-                <option value="todas">Origem</option>
-                {Object.entries(ORIGENS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-              </select>
-              <select value={filterDue} onChange={(e) => { setFilterDue(e.target.value); setCurrentPage(1); }}
-                className="px-3 py-2.5 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg bg-white dark:bg-[#141414] text-gray-600 dark:text-[#aaa] cursor-pointer">
-                <option value="todos">Prazo</option>
-                <option value="atrasadas">Atrasadas</option>
-                <option value="hoje">Vence hoje</option>
-                <option value="semana">Proximos 7 dias</option>
-              </select>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button onClick={() => { setFilterPriority('todas'); setCurrentPage(1); }}
+                  className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                    filterPriority === 'todas'
+                      ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+                      : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+                  }`}>
+                  Prioridade
+                </button>
+                {Object.entries(PRIORITIES).map(([k, v]) => (
+                  <button key={k} onClick={() => { setFilterPriority(k); setCurrentPage(1); }}
+                    className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                      filterPriority === k
+                        ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+                        : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+                    }`}>
+                    {v.label}
+                  </button>
+                ))}
+                <span className="w-px h-4 bg-gray-200 dark:bg-white/[0.08] mx-1.5" />
+                <button onClick={() => { setFilterStatus('todos'); setCurrentPage(1); }}
+                  className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                    filterStatus === 'todos'
+                      ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+                      : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+                  }`}>
+                  Status
+                </button>
+                {Object.entries(STATUSES).map(([k, v]) => (
+                  <button key={k} onClick={() => { setFilterStatus(k); setCurrentPage(1); }}
+                    className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                      filterStatus === k
+                        ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+                        : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+                    }`}>
+                    {v.label}
+                  </button>
+                ))}
+                <span className="w-px h-4 bg-gray-200 dark:bg-white/[0.08] mx-1.5" />
+                <button onClick={() => { setFilterOrigin('todas'); setCurrentPage(1); }}
+                  className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                    filterOrigin === 'todas'
+                      ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+                      : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+                  }`}>
+                  Origem
+                </button>
+                {Object.entries(ORIGENS).map(([k, v]) => (
+                  <button key={k} onClick={() => { setFilterOrigin(k); setCurrentPage(1); }}
+                    className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                      filterOrigin === k
+                        ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+                        : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+                    }`}>
+                    {v.label}
+                  </button>
+                ))}
+                <span className="w-px h-4 bg-gray-200 dark:bg-white/[0.08] mx-1.5" />
+                <button onClick={() => { setFilterDue('todos'); setCurrentPage(1); }}
+                  className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                    filterDue === 'todos'
+                      ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+                      : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+                  }`}>
+                  Prazo
+                </button>
+                <button onClick={() => { setFilterDue('atrasadas'); setCurrentPage(1); }}
+                  className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                    filterDue === 'atrasadas'
+                      ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+                      : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+                  }`}>
+                  Atrasadas
+                </button>
+                <button onClick={() => { setFilterDue('hoje'); setCurrentPage(1); }}
+                  className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                    filterDue === 'hoje'
+                      ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+                      : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+                  }`}>
+                  Vence hoje
+                </button>
+                <button onClick={() => { setFilterDue('semana'); setCurrentPage(1); }}
+                  className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                    filterDue === 'semana'
+                      ? 'bg-[var(--zelt-primary)]/8 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/25'
+                      : 'bg-white dark:bg-[#141414] text-gray-500 dark:text-[#808080] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+                  }`}>
+                  Proximos 7 dias
+                </button>
+              </div>
             </div>
 
             {hasData ? (
               <>
-            <div className="grid grid-cols-6 gap-3">
+            <div className="cards-carousel" style={{ '--cols': 6 }}>
               {[
                 { label: 'Total', value: counts.total, color: 'text-gray-900 dark:text-[#ededed]', icon: FileText, iconColor: 'text-gray-400 dark:text-[#666]' },
                 { label: 'Pendentes', value: counts.pendentes, color: 'text-gray-600 dark:text-[#aaa]', icon: Clock, iconColor: 'text-gray-400 dark:text-[#666]' },
@@ -557,7 +590,7 @@ export default function TarefasView() {
 
             <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-xl">
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full table-stack">
                   <thead className="bg-gray-50 dark:bg-[#111] border-b border-gray-100 dark:border-white/[0.06]">
                     <tr>
                       <th className="px-4 py-3 w-10">
@@ -596,14 +629,14 @@ export default function TarefasView() {
                         <tr key={task.id}
                           className={`group transition-colors cursor-pointer ${isSelected ? 'bg-[var(--zelt-primary)]/[0.02]' : isOverdue ? 'bg-red-50/30' : 'hover:bg-gray-50/50 dark:hover:bg-[#1a1a1a]'}`}
                           onClick={() => setShowDetailPanel(task)}>
-                          <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <td className="px-4 py-3" data-label="Selecionar" onClick={(e) => e.stopPropagation()}>
                             <button onClick={() => toggleSelect(task.id)} className="text-gray-400 dark:text-[#666] hover:text-gray-600">
                               {isSelected
                                 ? <CheckSquare size={16} className="text-[var(--zelt-primary)]" />
                                 : <Square size={16} />}
                             </button>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-3" data-label="Titulo">
                             <div className="flex flex-col">
                               <span className={`text-sm text-gray-900 dark:text-[#ededed] ${isOverdue ? 'text-red-600' : ''}`}>{task.title}</span>
                               {task.tags.length > 0 && (
@@ -616,12 +649,12 @@ export default function TarefasView() {
                               )}
                             </div>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-3" data-label="Cliente">
                             <span className={`text-sm ${task.client ? 'text-gray-700 dark:text-[#ccc]' : 'text-gray-300 dark:text-[#555]'}`}>
                               {task.client?.name || '-'}
                             </span>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-3" data-label="Responsavel">
                             <div className="flex items-center gap-2">
                               <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px]"
                                 style={{ background: task.assignee.color }}>
@@ -630,23 +663,23 @@ export default function TarefasView() {
                               <span className="text-sm text-gray-600 dark:text-[#aaa]">{task.assignee.name}</span>
                             </div>
                           </td>
-                          <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <td className="px-4 py-3" data-label="Prioridade" onClick={(e) => e.stopPropagation()}>
                             <span className={`inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded border ${PRIORITIES[task.priority].color} ${PRIORITIES[task.priority].bg} ${PRIORITIES[task.priority].border}`}>
                               <span className={`w-2 h-2 rounded-full ${PRIORITIES[task.priority].dot}`}></span>
                               {PRIORITIES[task.priority].label}
                             </span>
                           </td>
-                          <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <td className="px-4 py-3" data-label="Status" onClick={(e) => e.stopPropagation()}>
                             <span className={`text-xs px-2 py-1 rounded border ${STATUSES[task.status].color} ${STATUSES[task.status].bg} ${STATUSES[task.status].border}`}>
                               {STATUSES[task.status].label}
                             </span>
                           </td>
-                          <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <td className="px-4 py-3" data-label="Origem" onClick={(e) => e.stopPropagation()}>
                             <span className={`text-xs px-2 py-1 rounded border ${ORIGENS[task.origin].color} ${ORIGENS[task.origin].bg} ${ORIGENS[task.origin].border}`}>
                               {ORIGENS[task.origin].label}
                             </span>
                           </td>
-                          <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <td className="px-4 py-3" data-label="Prazo" onClick={(e) => e.stopPropagation()}>
                             {task.dueDate ? (
                               <div className={`flex items-center gap-1.5 text-sm ${isOverdue ? 'text-red-500' : isDueSoon ? 'text-amber-600' : 'text-gray-600 dark:text-[#aaa]'}`}>
                                 <Calendar size={13} />
@@ -656,10 +689,10 @@ export default function TarefasView() {
                               </div>
                             ) : <span className="text-gray-300 dark:text-[#555] text-sm">-</span>}
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-3" data-label="Criacao">
                             <span className="text-sm text-gray-400 dark:text-[#666]">{formatDate(task.createdAt)}</span>
                           </td>
-                          <td className="px-4 py-3 relative" onClick={(e) => e.stopPropagation()}>
+                          <td className="px-4 py-3 relative" data-label="Acoes" onClick={(e) => e.stopPropagation()}>
                             <button onClick={(e) => {
                               if (rowMenuOpen === task.id) { setRowMenuOpen(null); return; }
                               const rect = e.currentTarget.getBoundingClientRect();
@@ -746,16 +779,16 @@ export default function TarefasView() {
             )}
 
             {showDetailPanel && (
-              <DetailPanel task={showDetailPanel} onClose={() => setShowDetailPanel(null)} workspaceId={workspaceId} onRefresh={fetchTasks} />
+              <DetailPanel task={showDetailPanel} onClose={() => setShowDetailPanel(null)} onRefresh={fetchTasks} />
             )}
 
             {showCreateModal && (
-              <TaskModal task={editTask} onClose={() => { setShowCreateModal(false); setEditTask(null); }} onSave={handleCreateTask} membersList={membersList} />
+              <TaskModal task={editTask} onClose={() => { setShowCreateModal(false); setEditTask(null); }} onSave={handleCreateTask} />
             )}
 
             {confirmDelete && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 fade-in" onClick={() => setConfirmDelete(null)}>
-                <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-xl w-[400px] p-6" onClick={(e) => e.stopPropagation()}>
+              <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/20 fade-in p-0 sm:p-4" onClick={() => setConfirmDelete(null)}>
+                <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-t-2xl sm:rounded-xl w-full max-w-[400px] p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center">
                       <Trash2 size={18} className="text-red-500" />
@@ -767,7 +800,7 @@ export default function TarefasView() {
                       ? `Tem certeza que deseja excluir ${selectedIds.length} tarefa(s)? Esta acao nao pode ser desfeita.`
                       : `Tem certeza que deseja excluir "${confirmDelete.title}"? Esta acao nao pode ser desfeita.`}
                   </p>
-                  <div className="flex justify-end gap-2">
+                  <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
                     <button onClick={() => setConfirmDelete(null)}
                       className="px-4 py-2 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg text-gray-600 dark:text-[#aaa] hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors">
                       Cancelar
@@ -787,7 +820,7 @@ export default function TarefasView() {
   );
 }
 
-function DetailPanel({ task, onClose, workspaceId, onRefresh }) {
+function DetailPanel({ task, onClose, onRefresh }) {
   const [activeTab, setActiveTab] = useState('info');
   const [newComment, setNewComment] = useState('');
   const [editingComment, setEditingComment] = useState(null);
@@ -798,21 +831,21 @@ function DetailPanel({ task, onClose, workspaceId, onRefresh }) {
   const displayTask = fullTask || task;
 
   const fetchDetail = async () => {
-    if (!workspaceId || !task.id) return;
+    if (!task.id) return;
     try {
       setLoadingDetail(true);
-      const res = await taskApi.get(workspaceId, task.id);
+      const res = await taskApi.get(task.id);
       const t = res.task;
       const mapped = {
         ...t,
         status: FRONTEND_STATUS_MAP[t.status] || t.status,
         priority: FRONTEND_PRIORITY_MAP[t.priority] || t.priority,
         origin: FRONTEND_ORIGIN_MAP[t.origin] || t.origin,
-        assignee: t.assignee ? {
-          id: t.assignee.id,
-          name: t.assignee.name,
-          initials: getInitials(t.assignee.name),
-          color: getMemberColor(t.assignee.name),
+        assignee: t.user ? {
+          id: t.user.id,
+          name: t.user.name,
+          initials: getInitials(t.user.name),
+          color: getMemberColor(t.user.name),
         } : { id: 0, name: 'Sem responsavel', initials: 'SR', color: '#9CA3AF' },
         tags: Array.isArray(t.tags) ? t.tags : (typeof t.tags === 'string' ? (() => { try { return JSON.parse(t.tags); } catch { return []; } })() : []),
         comments: (t.comments || []).map(c => ({
@@ -840,12 +873,12 @@ function DetailPanel({ task, onClose, workspaceId, onRefresh }) {
 
   useEffect(() => {
     fetchDetail();
-  }, [task.id, workspaceId]);
+  }, [task.id]);
 
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
     try {
-      await taskApi.addComment(workspaceId, task.id, newComment);
+      await taskApi.addComment(task.id, newComment);
       setNewComment('');
       await fetchDetail();
       onRefresh?.();
@@ -856,7 +889,7 @@ function DetailPanel({ task, onClose, workspaceId, onRefresh }) {
 
   const handleDeleteComment = async (commentId) => {
     try {
-      await taskApi.deleteComment(workspaceId, task.id, commentId);
+      await taskApi.deleteComment(task.id, commentId);
       await fetchDetail();
       onRefresh?.();
     } catch (err) {
@@ -866,8 +899,8 @@ function DetailPanel({ task, onClose, workspaceId, onRefresh }) {
 
   const handleSaveEdit = async (commentId) => {
     try {
-      await taskApi.deleteComment(workspaceId, task.id, commentId);
-      await taskApi.addComment(workspaceId, task.id, editText);
+      await taskApi.deleteComment(task.id, commentId);
+      await taskApi.addComment(task.id, editText);
       setEditingComment(null);
       await fetchDetail();
     } catch (err) {
@@ -881,7 +914,7 @@ function DetailPanel({ task, onClose, workspaceId, onRefresh }) {
   return (
     <div className="fixed inset-0 z-40 flex justify-end" onClick={onClose}>
       <div className="absolute inset-0 bg-black/10 fade-in"></div>
-      <div className="relative w-[480px] h-full bg-white dark:bg-[#141414] border-l border-gray-200 dark:border-white/[0.06] flex flex-col slide-in-right overflow-hidden"
+      <div className="relative w-full max-w-[480px] h-full bg-white dark:bg-[#141414] border-l border-gray-200 dark:border-white/[0.06] flex flex-col slide-in-right overflow-hidden"
         onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-white/[0.06]">
           <div className="flex items-center gap-2.5">
@@ -1078,11 +1111,10 @@ function InfoRow({ label, children }) {
   );
 }
 
-function TaskModal({ task, onClose, onSave, membersList }) {
+function TaskModal({ task, onClose, onSave }) {
   const [form, setForm] = useState({
     title: task?.title || '',
     description: task?.description || '',
-    assigneeId: task?.assignee?.id || '',
     client: task?.client?.name || '',
     conversation: task?.conversation?.name || '',
     priority: task?.priority || 'media',
@@ -1107,8 +1139,8 @@ function TaskModal({ task, onClose, onSave, membersList }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 fade-in" onClick={onClose}>
-      <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-xl w-[580px] max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/20 fade-in p-0 sm:p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-t-2xl sm:rounded-xl w-full max-w-[580px] max-h-[92vh] flex flex-col pb-[env(safe-area-inset-bottom)]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-white/[0.06]">
           <h3 className="text-base text-gray-900 dark:text-[#ededed]">{task ? 'Editar Tarefa' : 'Nova Tarefa'}</h3>
           <button onClick={onClose} className="p-1.5 rounded hover:bg-gray-100 text-gray-400 dark:text-[#666] hover:text-gray-600 transition-colors">
@@ -1127,14 +1159,6 @@ function TaskModal({ task, onClose, onSave, membersList }) {
               className="w-full px-4 py-2.5 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg bg-white dark:bg-[#141414] text-gray-900 dark:text-[#ededed] placeholder-gray-400 dark:placeholder-[#555] focus:border-[var(--zelt-primary)]/40 resize-none transition-colors" />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs text-gray-400 dark:text-[#666] uppercase tracking-wider block mb-1.5">Responsavel</label>
-              <select value={form.assigneeId} onChange={(e) => handleChange('assigneeId', e.target.value)}
-                className="w-full px-4 py-2.5 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg bg-white dark:bg-[#141414] text-gray-600 dark:text-[#aaa] focus:border-[var(--zelt-primary)]/40 transition-colors">
-                <option value="">Selecionar...</option>
-                {membersList.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-              </select>
-            </div>
             <div>
               <label className="text-xs text-gray-400 dark:text-[#666] uppercase tracking-wider block mb-1.5">Prioridade</label>
               <select value={form.priority} onChange={(e) => handleChange('priority', e.target.value)}

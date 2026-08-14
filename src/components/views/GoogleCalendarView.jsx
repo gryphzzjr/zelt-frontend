@@ -45,7 +45,7 @@ export default function GoogleCalendarView() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="cards-carousel">
           <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-lg p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center"><Check size={18} className="text-emerald-500" /></div>
             <div>

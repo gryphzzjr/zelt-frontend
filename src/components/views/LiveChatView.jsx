@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
-  Search, Info, Send, MessageSquare, Users, User, ChevronLeft,
+  Search, Info, Send, MessageSquare, Users, User, ChevronLeft, ArrowLeft,
   HelpCircle, Loader2, WifiOff, CheckCheck, Pencil,
   Copy, ExternalLink, X, Hash, MoreVertical, Trash2, Download,
-  Play, Pause,
+  Play, Pause, UserPlus, AlertTriangle,
+  FileText, MapPin, Image as ImageIcon, Film, Mic,
 } from 'lucide-react';
 import { useWhatsAppStatus } from '../../hooks/useWhatsAppStatus';
 import { useAuth } from '../../contexts/AuthContext';
@@ -34,6 +35,13 @@ function formatPhone(raw) {
     if (num.length === 8) return `(${ddd}) ${num.substring(0, 4)}-${num.substring(4)}`;
   }
   return d || raw;
+}
+
+function normalizePhone(raw) {
+  let d = (raw || '').replace(/\D/g, '');
+  if (d.startsWith('0')) d = d.slice(1);
+  if (!d.startsWith('55')) d = `55${d}`;
+  return d;
 }
 
 function Avatar({ name, url, size = 36 }) {
@@ -109,21 +117,25 @@ function getLastText(chat) {
   const m = msg.message || {};
   if (m.conversation) return m.conversation;
   if (m.extendedTextMessage?.text) return m.extendedTextMessage.text;
-  if (msg.messageData?.mediaPath) {
-    if (type === 'imageMessage') return msg.messageText || '[Foto]';
-    if (type === 'videoMessage') return msg.messageText || '[Video]';
-    if (type === 'audioMessage') return msg.messageText || '[Audio]';
-  }
-  if (type === 'imageMessage') return 'Foto';
-  if (type === 'videoMessage') return 'Video';
-  if (type === 'audioMessage') return 'Audio';
-  if (type === 'documentMessage') return 'Documento';
+  if (type === 'documentMessage') return msg.messageText || 'Documento';
+  if (type === 'imageMessage') return msg.messageText || 'Foto';
+  if (type === 'videoMessage') return msg.messageText || 'Video';
+  if (type === 'audioMessage') return msg.messageText || 'Audio';
   if (type === 'stickerMessage') return 'Figurinha';
+  if (type === 'locationMessage') return 'Localizacao';
+  if (type === 'contactMessage') return 'Contato';
   return type || 'Mensagem';
 }
 
 function isGroup(jid) {
   return jid?.endsWith('@g.us');
+}
+
+function msgTimeKey(m) {
+  if (!m) return 0;
+  if (m.receivedAt) return new Date(m.receivedAt).getTime();
+  const ts = Number(m.messageTimestamp || 0);
+  return ts > 1e12 ? ts : ts * 1000;
 }
 
 function AudioPlayer({ src, fromMe }) {
@@ -234,7 +246,92 @@ function AudioPlayer({ src, fromMe }) {
   );
 }
 
-export default function LiveChatView({ onNavigate }) {
+function MediaUnavailable({ label, icon, fromMe }) {
+  return (
+    <div className="flex items-center gap-2 mb-1 px-3 py-2 rounded min-w-[160px]"
+      style={{ backgroundColor: fromMe ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.06)' }}>
+      {icon || <FileText size={14} className={fromMe ? 'text-white/60' : 'text-gray-400'} />}
+      <span className={`text-[11px] ${fromMe ? 'text-white/60' : 'text-gray-400'}`}>{label}</span>
+    </div>
+  );
+}
+
+function DocumentCard({ fileName, url, fromMe }) {
+  const name = fileName || 'Documento';
+  const inner = (
+    <div className="flex items-center gap-2.5 mb-1 px-3 py-2 rounded min-w-[200px]"
+      style={{ backgroundColor: fromMe ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.06)' }}>
+      <div className="w-8 h-8 rounded flex items-center justify-center shrink-0"
+        style={{ backgroundColor: fromMe ? 'rgba(255,255,255,0.2)' : 'rgba(37,211,102,0.15)' }}>
+        <FileText size={15} className={fromMe ? 'text-white' : 'text-[#25D366]'} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className={`text-[11px] font-medium truncate ${fromMe ? 'text-white' : 'text-gray-900 dark:text-[#e4e4e7]'}`}>{name}</p>
+        <p className={`text-[9px] ${fromMe ? 'text-white/60' : 'text-gray-400'}`}>{url ? 'Toque para baixar' : 'Download indisponivel'}</p>
+      </div>
+      {url && <Download size={13} className={`shrink-0 ${fromMe ? 'text-white/70' : 'text-gray-400'}`} />}
+    </div>
+  );
+  return url ? (
+    <a href={url} target="_blank" rel="noopener noreferrer" download className="block">{inner}</a>
+  ) : inner;
+}
+
+function StickerImage({ url, fromMe }) {
+  if (!url) return <MediaUnavailable label="Figurinha" fromMe={fromMe} />;
+  return <img src={url} alt="Figurinha" className="w-32 h-32 object-contain mb-1" loading="lazy" />;
+}
+
+function LocationCard({ location, fromMe }) {
+  const lat = location?.degreesLatitude;
+  const lng = location?.degreesLongitude;
+  const name = location?.name;
+  const address = location?.address;
+  const mapsUrl = (lat != null && lng != null)
+    ? `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
+    : (location?.url || null);
+  const label = name || address || (lat != null && lng != null ? `${lat}, ${lng}` : 'Localizacao');
+  const inner = (
+    <div className="flex items-center gap-2.5 mb-1 px-3 py-2 rounded min-w-[200px]"
+      style={{ backgroundColor: fromMe ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.06)' }}>
+      <div className="w-8 h-8 rounded flex items-center justify-center shrink-0"
+        style={{ backgroundColor: fromMe ? 'rgba(255,255,255,0.2)' : 'rgba(37,211,102,0.15)' }}>
+        <MapPin size={15} className={fromMe ? 'text-white' : 'text-[#25D366]'} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className={`text-[11px] font-medium truncate ${fromMe ? 'text-white' : 'text-gray-900 dark:text-[#e4e4e7]'}`}>{label}</p>
+        {address && name !== address && (
+          <p className={`text-[9px] truncate ${fromMe ? 'text-white/60' : 'text-gray-400'}`}>{address}</p>
+        )}
+      </div>
+      {mapsUrl && <ExternalLink size={12} className={`shrink-0 ${fromMe ? 'text-white/70' : 'text-gray-400'}`} />}
+    </div>
+  );
+  return mapsUrl ? (
+    <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="block">{inner}</a>
+  ) : inner;
+}
+
+function ContactCard({ contact, fromMe }) {
+  const vcardName = contact?.vcard?.split('\n').find(l => l.startsWith('FN:'))?.slice(3)?.trim() || '';
+  const name = contact?.displayName || vcardName || 'Contato';
+  const phone = contact?.vcard?.match(/TEL[^:]*:([+\d\s()-]+)/)?.[1]?.trim() || '';
+  return (
+    <div className="flex items-center gap-2.5 mb-1 px-3 py-2 rounded min-w-[200px]"
+      style={{ backgroundColor: fromMe ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.06)' }}>
+      <div className="w-8 h-8 rounded flex items-center justify-center shrink-0"
+        style={{ backgroundColor: fromMe ? 'rgba(255,255,255,0.2)' : 'rgba(37,211,102,0.15)' }}>
+        <User size={15} className={fromMe ? 'text-white' : 'text-[#25D366]'} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className={`text-[11px] font-medium truncate ${fromMe ? 'text-white' : 'text-gray-900 dark:text-[#e4e4e7]'}`}>{name}</p>
+        {phone && <p className={`text-[9px] truncate ${fromMe ? 'text-white/60' : 'text-gray-400'}`}>{phone}</p>}
+      </div>
+    </div>
+  );
+}
+
+export default function LiveChatView({ onNavigate, fullscreen = false, onBack }) {
   const [chats, setChats] = useState([]);
   const [dbMeta, setDbMeta] = useState({});
   const [loading, setLoading] = useState(false);
@@ -255,10 +352,14 @@ export default function LiveChatView({ onNavigate }) {
   const [searchInChat, setSearchInChat] = useState('');
   const [clearingChat, setClearingChat] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const [showNewContact, setShowNewContact] = useState(false);
+  const [newContact, setNewContact] = useState({ name: '', phone: '', message: '' });
+  const [newContactSaving, setNewContactSaving] = useState(false);
+  const [newContactError, setNewContactError] = useState('');
 
-  const { workspace } = useAuth();
-  const instanceName = workspace?.instanceName;
-  const { connected, instances, loading: waLoading } = useWhatsAppStatus(workspace?.id);
+  const { user } = useAuth();
+  const instanceName = user?.instanceName;
+  const { connected, instances, loading: waLoading } = useWhatsAppStatus();
 
   const chatEndRef = useRef(null);
   const chatScrollRef = useRef(null);
@@ -313,7 +414,7 @@ export default function LiveChatView({ onNavigate }) {
       setDbMeta(meta);
 
       const list = dbList
-        .filter(c => c.pushName || c.customName)
+        .filter(c => (c.pushName || c.customName) || (c.messages?.[0]))
         .map(c => ({
           id: c.id,
           remoteJid: c.remoteJid,
@@ -327,11 +428,12 @@ export default function LiveChatView({ onNavigate }) {
             messageType: c.messages[0].messageType,
             messageTimestamp: c.messages[0].messageTimestamp.toString(),
             fromMe: c.messages[0].fromMe,
+            receivedAt: c.messages[0].receivedAt,
             message: { conversation: c.messages[0].messageText },
           } : null,
         }));
 
-      list.sort((a, b) => (b.lastMessage?.messageTimestamp || 0) - (a.lastMessage?.messageTimestamp || 0));
+      list.sort((a, b) => msgTimeKey(b.lastMessage) - msgTimeKey(a.lastMessage));
 
       const map = new Map();
       list.forEach(c => map.set(c.remoteJid, c));
@@ -403,7 +505,7 @@ export default function LiveChatView({ onNavigate }) {
         } else {
           list.push(realMsg);
         }
-        list.sort((a, b) => Number(a.messageTimestamp || 0) - Number(b.messageTimestamp || 0));
+        list.sort((a, b) => msgTimeKey(a) - msgTimeKey(b));
 
         setDbMeta(prev => {
           const existing = prev[jid];
@@ -431,14 +533,15 @@ export default function LiveChatView({ onNavigate }) {
             messageType: msg.messageType,
             messageText: msg.messageText,
             messageTimestamp: msg.messageTimestamp,
+            receivedAt: msg.receivedAt,
           };
           if (map.has(jid)) {
             const existing = map.get(jid);
-            map.set(jid, { ...existing, lastMessage: lastMsg, pushName: existing.pushName || msg.pushName });
-          } else if (contact.pushName || contact.customName) {
+            map.set(jid, { ...existing, lastMessage: lastMsg, pushName: existing.pushName || (!msg.fromMe ? msg.pushName : null) });
+          } else {
             const newContact = {
               remoteJid: jid,
-              pushName: msg.pushName || contact.pushName,
+              pushName: msg.fromMe ? (contact.pushName || null) : (msg.pushName || contact.pushName),
               profilePicUrl: contact.profilePicUrl,
               phone: contact.phone,
               customName: contact.customName,
@@ -457,7 +560,7 @@ export default function LiveChatView({ onNavigate }) {
               }
             }
           }
-          return Array.from(map.values()).sort((a, b) => (b.lastMessage?.messageTimestamp || 0) - (a.lastMessage?.messageTimestamp || 0));
+          return Array.from(map.values()).sort((a, b) => msgTimeKey(b.lastMessage) - msgTimeKey(a.lastMessage));
         });
 
         if (selectedJidRef.current === jid) {
@@ -496,7 +599,26 @@ export default function LiveChatView({ onNavigate }) {
   const selectedChat = chats.find(c => c.remoteJid === selectedJid);
   const selectedMeta = selectedJid ? dbMeta[selectedJid] : null;
 
-  const displayName = selectedChat ? (selectedMeta?.customName || selectedChat.pushName || '') : '';
+  const clientNumberMap = useMemo(() => {
+    const map = {};
+    let n = 1;
+    for (const c of chats) {
+      if (isGroup(c.remoteJid)) continue;
+      const meta = dbMeta[c.remoteJid];
+      if (!meta?.customName && !c.pushName) map[c.remoteJid] = n++;
+    }
+    return map;
+  }, [chats, dbMeta]);
+
+  const getContactName = (chat, meta) => {
+    if (meta?.customName) return meta.customName;
+    if (chat?.pushName) return chat.pushName;
+    if (isGroup(chat?.remoteJid)) return 'Grupo';
+    const num = clientNumberMap[chat?.remoteJid];
+    return num ? `Cliente ${num}` : 'Desconhecido';
+  };
+
+  const displayName = selectedChat ? getContactName(selectedChat, selectedMeta) : '';
   const displayPhone = selectedChat ? formatPhone(selectedMeta?.phone || getPhone(selectedChat)) : '';
 
   const fetchMessages = useCallback(async (remoteJid) => {
@@ -507,7 +629,7 @@ export default function LiveChatView({ onNavigate }) {
       const existing = messagesRef.current.get(remoteJid) || [];
       const existingIds = new Set(existing.map(m => m.keyId).filter(Boolean));
       const merged = [...list.filter(m => !existingIds.has(m.keyId)), ...existing];
-      merged.sort((a, b) => Number(a.messageTimestamp) - Number(b.messageTimestamp));
+      merged.sort((a, b) => msgTimeKey(a) - msgTimeKey(b));
       messagesRef.current.set(remoteJid, merged);
       setViewMessages([...merged]);
     } catch (err) {
@@ -667,6 +789,89 @@ export default function LiveChatView({ onNavigate }) {
     }
   };
 
+  const handleCreateContact = async (e) => {
+    if (e) e.preventDefault();
+    const number = normalizePhone(newContact.phone);
+    if (!number || number.replace(/\D/g, '').length < 12) {
+      setNewContactError('Informe um numero de telefone valido com DDD.');
+      return;
+    }
+    if (newContactSaving) return;
+
+    setNewContactSaving(true);
+    setNewContactError('');
+
+    const name = newContact.name.trim();
+    const msg = newContact.message.trim();
+    const jid = `${number}@s.whatsapp.net`;
+
+    try {
+      await chatApi.createContact(instanceName, {
+        phone: number,
+        customName: name || null,
+        pushName: name || null,
+      });
+
+      if (msg) {
+        await evolutionApi.sendText(instanceName, number, msg);
+        const now = BigInt(Math.floor(Date.now() / 1000));
+        const keyId = `local-${Date.now()}`;
+        const saved = {
+          id: keyId,
+          keyId,
+          instanceName,
+          remoteJid: jid,
+          fromMe: true,
+          pushName: 'Voce',
+          messageType: 'conversation',
+          messageText: msg,
+          messageData: null,
+          messageTimestamp: now.toString(),
+          status: 'sent',
+          receivedAt: new Date().toISOString(),
+        };
+        if (!messagesRef.current.has(jid)) messagesRef.current.set(jid, []);
+        messagesRef.current.get(jid).push(saved);
+        try {
+          await chatApi.saveMessage({
+            instanceName,
+            remoteJid: jid,
+            keyId,
+            fromMe: true,
+            pushName: 'Voce',
+            messageType: 'conversation',
+            messageText: msg,
+            messageTimestamp: now.toString(),
+            phone: number,
+          });
+        } catch (err) {
+          console.warn('[LiveChat] createContact saveMessage error:', err);
+        }
+      }
+
+      setShowNewContact(false);
+      setNewContact({ name: '', phone: '', message: '' });
+      setChatFilter('contacts');
+      setSearchQuery('');
+      setShowInfoPanel(false);
+      setEditingName(false);
+      setGroupMembers([]);
+      setSelectedJid(jid);
+      if (messagesRef.current.has(jid) && messagesRef.current.get(jid).length > 0) {
+        setViewMessages([...messagesRef.current.get(jid)]);
+      } else {
+        setViewMessages([]);
+        fetchMessages(jid);
+      }
+      await fetchChats();
+    } catch (err) {
+      console.error('[LiveChat] createContact error:', err);
+      setNewContactError('Nao foi possivel criar o contato. Verifique o numero e tente novamente.');
+    } finally {
+      setNewContactSaving(false);
+    }
+  };
+
   const handleToggleTag = async (tagId) => {
     if (!selectedMeta?.id) return;
     const current = (selectedMeta.tags || []).map(t => t.tagId);
@@ -698,7 +903,7 @@ export default function LiveChatView({ onNavigate }) {
     if (chatFilter === 'groups' && !isGroup(c.remoteJid)) return false;
 
     const meta = dbMeta[c.remoteJid];
-    const name = (meta?.customName || c.pushName || '');
+    const name = getContactName(c, meta);
     if (chatFilter === 'contacts' && !name) return false;
 
     const q = searchQuery.toLowerCase();
@@ -731,9 +936,9 @@ export default function LiveChatView({ onNavigate }) {
           <h1 className="text-xl text-gray-900 dark:text-[#ededed]">Live Chat</h1>
           <p className="text-xs text-gray-400 dark:text-[#666] mt-0.5">Atenda seus clientes em tempo real</p>
         </div>
-        <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-xl p-12">
+        <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded p-12">
           <div className="flex flex-col items-center text-center max-w-sm mx-auto">
-            <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center mb-4">
+            <div className="w-14 h-14 rounded-lg bg-amber-50 flex items-center justify-center mb-4">
               <WifiOff size={24} className="text-amber-500" />
             </div>
             <h3 className="text-base text-gray-900 dark:text-[#ededed] mb-1.5">WhatsApp nao conectado</h3>
@@ -742,7 +947,7 @@ export default function LiveChatView({ onNavigate }) {
             </p>
             <button
               onClick={() => onNavigate?.('integracoes/whatsapp')}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm text-white bg-[#25D366] hover:bg-[#1fb855] rounded-lg transition-colors"
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm text-white bg-[#25D366] hover:bg-[#1fb855] rounded transition-colors"
             >
               Conectar WhatsApp
             </button>
@@ -753,12 +958,12 @@ export default function LiveChatView({ onNavigate }) {
   }
 
   const isGroupSelected = selectedChat && isGroup(selectedChat.remoteJid);
+  const groupChatCount = chats.filter((c) => isGroup(c.remoteJid)).length;
 
   return (
     <>
       <style>{`
-        .livechat-view * { font-family: 'DM Sans', system-ui, sans-serif; }
-        .livechat-view .chat-scroll::-webkit-scrollbar { width: 4px; }
+        .livechat-view .chat-scroll::-webkit-scrollbar { width: 5px; }
         .livechat-view .chat-scroll::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 4px; }
         .livechat-view .msg-bubble { position: relative; }
         .livechat-view .msg-bubble:hover .msg-actions { opacity: 1; pointer-events: auto; }
@@ -766,50 +971,152 @@ export default function LiveChatView({ onNavigate }) {
         .dark .chat-scroll::-webkit-scrollbar-track { background: #111; }
         .dark .chat-scroll::-webkit-scrollbar-thumb { background: #333; }
       `}</style>
-      <div className="livechat-view flex overflow-hidden text-gray-800 -m-8" style={{ width: 'calc(100vw - 256px)', height: 'calc(100vh - 128px)' }}>
-
-        <section className="w-[340px] h-full border-r border-gray-200 dark:border-white/[0.06] flex flex-col shrink-0 overflow-hidden">
-          <div className="p-3 pb-2">
-            <div className="relative">
-              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-[#666]" />
-              <input type="text" placeholder="Buscar conversa..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-[11px] border border-gray-200 dark:border-white/[0.06] rounded-lg bg-white dark:bg-[#141414] text-gray-900 dark:text-[#ededed] placeholder-gray-400 dark:placeholder-[#555] outline-none focus:border-[var(--zelt-primary)]/40 transition-colors" />
+      {loading && chats.length === 0 ? (
+        <div className={`livechat-view flex flex-col items-center justify-center gap-5 text-gray-800 dark:text-gray-200 view-enter ${fullscreen ? 'h-[100dvh]' : 'max-lg:h-[calc(100dvh-148px)] lg:h-[calc(100dvh-128px)]'}`}>
+          <div className="flex flex-col items-center gap-3">
+            <img src="/banner.png" alt="Zelt.ai" className="h-6" />
+            <div className="relative w-11 h-11">
+              <div className="absolute inset-0 rounded-full border-2 border-[var(--zelt-primary)]/10"></div>
+              <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-[#25D366] border-r-[#25D366]/40"
+                style={{ animation: 'orbit-spin 0.9s linear infinite' }}></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-2 h-2 rounded-full bg-[#25D366]"></div>
+              </div>
             </div>
           </div>
+          <div className="text-center">
+            <p className="text-sm font-medium text-gray-900 dark:text-[#ededed]">Conectando ao chat ao vivo...</p>
+            <p className="text-[11px] text-gray-400 dark:text-[#666] mt-1">Carregando conversas do WhatsApp</p>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className={`w-1.5 h-1.5 rounded-full ${sseConnected ? 'bg-green-500' : 'bg-gray-300 dark:bg-[#555]'}`}></span>
+            <span className="text-[10px] text-gray-400 dark:text-[#666]">{sseConnected ? 'Sincronizado' : 'Aguardando conexao'}</span>
+          </div>
+        </div>
+      ) : (
+      <div className={`livechat-view flex overflow-hidden text-gray-800 ${fullscreen ? 'h-[100dvh]' : '-mx-4 lg:-mx-8 max-lg:h-[calc(100dvh-148px)] lg:h-[calc(100dvh-128px)]'}`}>
 
-          <div className="px-3 pb-2 flex items-center gap-1">
+        <section className={`${selectedChat ? 'hidden lg:flex' : 'flex'} w-full lg:w-[320px] h-full border-r border-gray-200 dark:border-white/[0.06] flex-col shrink-0 overflow-hidden`}>
+          {fullscreen && (
+            <div className="flex items-center gap-2 px-3 pt-3 pb-2 shrink-0 border-b border-gray-200 dark:border-white/[0.06]">
+              {onBack && (
+                <button onClick={onBack} className="p-1.5 -ml-1 rounded hover:bg-gray-100 dark:hover:bg-[#1a1a1a] text-gray-500 dark:text-[#808080] transition-colors" aria-label="Voltar">
+                  <ArrowLeft size={16} />
+                </button>
+              )}
+              <img src="/banner.png" alt="Zelt.ai" className="h-5" />
+              <span className="text-[11px] font-semibold text-gray-900 dark:text-[#ededed]">Chat ao vivo</span>
+              <div className="ml-auto flex items-center gap-1.5">
+                <span className={`w-1.5 h-1.5 rounded-full ${sseConnected ? 'bg-green-500' : 'bg-gray-300 dark:bg-[#555]'}`}></span>
+                <span className="text-[9px] text-gray-400 dark:text-[#666]">{sseConnected ? 'Online' : 'Offline'}</span>
+              </div>
+            </div>
+          )}
+          <div className="p-3 pb-2 flex items-center gap-1.5">
+            <div className="relative flex-1">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-[#666]" />
+              <input type="text" placeholder="Buscar conversa..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-[11px] border border-gray-200 dark:border-white/[0.08] rounded bg-white dark:bg-[#141414] text-gray-900 dark:text-[#ededed] placeholder-gray-400 dark:placeholder-[#555] outline-none focus:border-[var(--zelt-primary)]/40 transition-colors" />
+            </div>
+            <button onClick={() => { setNewContact({ name: '', phone: '', message: '' }); setNewContactError(''); setShowNewContact(true); }}
+              className="flex items-center gap-1.5 px-2.5 py-2 text-[11px] rounded shrink-0 transition-colors bg-[var(--zelt-primary)] text-white hover:bg-[var(--zelt-primary-hover)]">
+              <UserPlus size={13} />
+              <span className="hidden sm:inline">Novo contato</span>
+            </button>
+          </div>
+
+          <div className="px-3 pb-2 flex items-center gap-1.5">
             <button onClick={() => setChatFilter('contacts')}
-              className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] transition-colors border
-                ${chatFilter === 'contacts' ? 'bg-[var(--zelt-primary)]/5 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/10' : 'bg-white dark:bg-[#141414] text-gray-400 dark:text-[#666] border-gray-200 dark:border-white/[0.06] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'}`}>
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[10px] transition-colors border
+                ${chatFilter === 'contacts' ? 'bg-[var(--zelt-primary)]/5 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/10' : 'bg-white dark:bg-[#141414] text-gray-400 dark:text-[#666] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'}`}>
               <User size={11} />
               Contatos
             </button>
             <button onClick={() => setChatFilter('groups')}
-              className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] transition-colors border
-                ${chatFilter === 'groups' ? 'bg-[var(--zelt-primary)]/5 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/10' : 'bg-white dark:bg-[#141414] text-gray-400 dark:text-[#666] border-gray-200 dark:border-white/[0.06] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'}`}>
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[10px] transition-colors border
+                ${chatFilter === 'groups' ? 'bg-[var(--zelt-primary)]/5 text-[var(--zelt-primary)] border-[var(--zelt-primary)]/10' : 'bg-white dark:bg-[#141414] text-gray-400 dark:text-[#666] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'}`}>
               <Users size={11} />
               Grupos
             </button>
-            <div className="ml-auto flex items-center gap-1">
-              <span className={`w-1.5 h-1.5 rounded-full ${sseConnected ? 'bg-green-500' : 'bg-gray-300'}`}></span>
-              <span className="text-[8px] text-gray-400 dark:text-[#666]">{sseConnected ? 'Online' : 'Offline'}</span>
+            <div className="ml-auto flex items-center gap-1.5">
+              <span className={`w-1.5 h-1.5 rounded-full ${sseConnected ? 'bg-green-500' : 'bg-gray-300 dark:bg-[#555]'}`}></span>
+              <span className="text-[9px] text-gray-400 dark:text-[#666]">{sseConnected ? 'Online' : 'Offline'}</span>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto chat-scroll px-2 py-1 space-y-0.5">
+          <div className="flex-1 overflow-y-auto chat-scroll px-2 py-1 space-y-1">
             {loading && chats.length === 0 ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 size={16} className="text-gray-400 dark:text-[#666] animate-spin" />
               </div>
             ) : filteredChats.length === 0 ? (
-              <div className="text-center py-12 text-gray-400 dark:text-[#666] text-[11px]">
-                {searchQuery ? 'Nenhum resultado' : chatFilter === 'groups' ? 'Nenhum grupo' : 'Nenhuma conversa'}
+              <div className="flex flex-col items-center justify-center min-h-full px-4 py-10 text-center">
+                <div className="relative w-16 h-16 mb-4 shrink-0">
+                  <div className="absolute inset-0 rounded-full border-2 border-dashed border-[var(--zelt-primary)]/20"></div>
+                  <div className="absolute inset-1.5 rounded-full bg-[var(--zelt-primary)]/[0.06] flex items-center justify-center">
+                    {searchQuery ? (
+                      <Search size={18} className="text-[var(--zelt-primary)]/70" />
+                    ) : chatFilter === 'groups' ? (
+                      <Users size={18} className="text-[var(--zelt-primary)]/70" />
+                    ) : (
+                      <MessageSquare size={18} className="text-[var(--zelt-primary)]/70" />
+                    )}
+                  </div>
+                </div>
+
+                <h4 className="text-[12px] font-medium text-gray-900 dark:text-[#ededed] mb-1">
+                  {searchQuery ? 'Nenhum resultado encontrado' : chatFilter === 'groups' ? 'Nenhum grupo ainda' : 'Nenhuma conversa ainda'}
+                </h4>
+                <p className="text-[10px] text-gray-400 dark:text-[#666] leading-relaxed max-w-[220px] mb-4">
+                  {searchQuery
+                    ? 'Nada encontrado para sua busca. Tente outro nome ou numero.'
+                    : chatFilter === 'groups'
+                      ? 'Os grupos aparecerao aqui automaticamente quando houver atividade.'
+                      : 'As mensagens que voce receber aparecerao aqui em tempo real.'}
+                </p>
+
+                {searchQuery ? (
+                  <button onClick={() => setSearchQuery('')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] border border-gray-200 dark:border-white/[0.08] text-gray-500 dark:text-[#808080] hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors">
+                    <X size={11} />
+                    Limpar busca
+                  </button>
+                ) : chatFilter === 'groups' ? (
+                  <button onClick={() => setChatFilter('contacts')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] border border-gray-200 dark:border-white/[0.08] text-gray-500 dark:text-[#808080] hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors">
+                    <User size={11} />
+                    Ver contatos
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => { setNewContact({ name: '', phone: '', message: '' }); setNewContactError(''); setShowNewContact(true); }}
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded text-[10px] text-white bg-[var(--zelt-primary)] hover:bg-[var(--zelt-primary-hover)] transition-colors">
+                      <UserPlus size={12} />
+                      Novo contato
+                    </button>
+                    <div className="w-full max-w-[230px] space-y-1.5 mt-4 text-left">
+                      <div className="flex items-start gap-2 p-2 rounded-lg bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06]">
+                        <div className="w-5 h-5 rounded bg-[var(--zelt-primary)]/[0.06] flex items-center justify-center shrink-0">
+                          <UserPlus size={10} className="text-[var(--zelt-primary)]" />
+                        </div>
+                        <p className="text-[10px] text-gray-500 dark:text-[#808080] leading-snug">Crie um contato para iniciar uma conversa.</p>
+                      </div>
+                      <div className="flex items-start gap-2 p-2 rounded-lg bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06]">
+                        <div className="w-5 h-5 rounded bg-[var(--zelt-primary)]/[0.06] flex items-center justify-center shrink-0">
+                          <MessageSquare size={10} className="text-[var(--zelt-primary)]" />
+                        </div>
+                        <p className="text-[10px] text-gray-500 dark:text-[#808080] leading-snug">Novas mensagens entram automaticamente na lista.</p>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             ) : (
               filteredChats.map((chat) => {
                 const meta = dbMeta[chat.remoteJid];
                 const isActive = selectedJid === chat.remoteJid;
-                const name = meta?.customName || chat.pushName || 'Desconhecido';
+                const name = getContactName(chat, meta);
                 const phone = formatPhone(meta?.phone || getPhone(chat));
                 const lastText = getLastText(chat);
                 const lastFromMe = chat.lastMessage?.fromMe;
@@ -819,7 +1126,7 @@ export default function LiveChatView({ onNavigate }) {
 
                 return (
                   <div key={chat.remoteJid} onClick={() => handleSelectContact(chat)}
-                    className={`group p-2.5 rounded-lg cursor-pointer transition-colors relative flex gap-2.5 items-start border
+                    className={`group p-2.5 rounded cursor-pointer transition-colors relative flex gap-2.5 items-start border
                       ${isActive ? 'bg-[var(--zelt-primary)]/[0.03] border-[var(--zelt-primary)]/10' : 'border-transparent hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'}`}>
                     <div className="relative shrink-0">
                       {isGrp ? (
@@ -857,7 +1164,7 @@ export default function LiveChatView({ onNavigate }) {
             )}
           </div>
 
-          <div className="mx-3 mb-3 p-2.5 rounded-lg bg-[var(--zelt-primary)]/[0.03] border border-[var(--zelt-primary)]/10">
+          <div className="mx-3 mb-3 p-2.5 rounded bg-[var(--zelt-primary)]/[0.03] border border-[var(--zelt-primary)]/10">
             <div className="flex items-center gap-1.5 mb-1">
               <HelpCircle size={10} className="text-[var(--zelt-primary)]" />
               <span className="text-[9px] text-[var(--zelt-primary)] uppercase tracking-wider">Chat ao vivo</span>
@@ -868,27 +1175,47 @@ export default function LiveChatView({ onNavigate }) {
           </div>
         </section>
 
-        <section className="flex-1 h-full flex flex-col overflow-hidden min-w-0">
+        <section className={`${selectedChat ? 'flex' : 'hidden lg:flex'} flex-1 h-full flex-col overflow-hidden min-w-0`}>
           {!selectedChat ? (
-            <div className="flex-1 h-full flex flex-col items-center justify-center p-8">
-              <div className="w-14 h-14 rounded-2xl bg-[var(--zelt-primary)]/5 flex items-center justify-center text-[var(--zelt-primary)] mb-4">
-                <MessageSquare size={24} />
-              </div>
-              <h3 className="text-sm text-gray-900 dark:text-[#ededed] mb-1">Nenhuma conversa selecionada</h3>
-              <p className="text-[11px] text-gray-400 dark:text-[#666] text-center max-w-[280px] leading-relaxed mb-5">
-                Selecione um contato na lista ao lado.
-              </p>
-              <div className="flex items-center gap-5 text-[10px] text-gray-400 dark:text-[#666]">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-6 h-6 rounded-md bg-[var(--zelt-primary)]/5 flex items-center justify-center"><Users size={11} className="text-[var(--zelt-primary)]" /></div>
-                  <span>{chats.length} contatos</span>
+            <div className="flex-1 h-full flex flex-col items-center justify-center p-6 relative">
+              <div className="absolute inset-0 pointer-events-none"
+                style={{ background: 'radial-gradient(ellipse at 50% 40%, rgba(99,0,255,0.05), transparent 65%)' }}></div>
+              <div className="relative flex flex-col items-center text-center max-w-[300px]">
+                <div className="relative mb-5">
+                  <div className="absolute inset-0 rounded-2xl rotate-6 bg-[var(--zelt-primary)]/[0.06]"></div>
+                  <div className="relative w-16 h-16 rounded-2xl bg-[var(--zelt-primary)]/5 border border-[var(--zelt-primary)]/10 flex items-center justify-center">
+                    <MessageSquare size={26} className="text-[var(--zelt-primary)]" />
+                  </div>
+                </div>
+                <h3 className="text-sm text-gray-900 dark:text-[#ededed] mb-1.5">Nenhuma conversa selecionada</h3>
+                <p className="text-[11px] text-gray-400 dark:text-[#666] text-center leading-relaxed mb-5">
+                  Escolha um contato ou grupo na lista ao lado para acompanhar e responder em tempo real.
+                </p>
+                <div className="flex items-center gap-2 flex-wrap justify-center">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-[#141414]">
+                    <div className="w-4 h-4 rounded bg-[var(--zelt-primary)]/5 flex items-center justify-center">
+                      <User size={9} className="text-[var(--zelt-primary)]" />
+                    </div>
+                    <span className="text-[10px] text-gray-500 dark:text-[#808080]">{chats.length} contatos</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-[#141414]">
+                    <div className="w-4 h-4 rounded bg-[var(--zelt-primary)]/5 flex items-center justify-center">
+                      <Users size={9} className="text-[var(--zelt-primary)]" />
+                    </div>
+                    <span className="text-[10px] text-gray-500 dark:text-[#808080]">{groupChatCount} grupos</span>
+                  </div>
                 </div>
               </div>
             </div>
           ) : (
             <>
-              <header className="h-[56px] border-b border-gray-200 dark:border-white/[0.06] px-5 flex items-center justify-between shrink-0">
+              <header className="h-[56px] border-b border-gray-200 dark:border-white/[0.06] px-4 lg:px-5 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2.5 min-w-0">
+                  {fullscreen && (
+                    <button onClick={() => setSelectedJid(null)} className="lg:hidden p-1.5 rounded hover:bg-gray-100 dark:hover:bg-[#1a1a1a] text-gray-500 dark:text-[#808080] transition-colors" aria-label="Voltar para conversas">
+                      <ArrowLeft size={16} />
+                    </button>
+                  )}
                   {isGroupSelected ? (
                     <div className="w-8 h-8 rounded-full bg-[var(--zelt-primary)]/10 flex items-center justify-center shrink-0">
                       <Users size={14} className="text-[var(--zelt-primary)]" />
@@ -917,14 +1244,14 @@ export default function LiveChatView({ onNavigate }) {
                 <div className="flex items-center gap-1.5">
                   {getWhatsAppLink() && (
                     <a href={getWhatsAppLink()} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] text-[#25D366] bg-[#25D366]/5 border border-[#25D366]/20 hover:bg-[#25D366]/10 transition-colors">
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] text-[#25D366] bg-[#25D366]/5 border border-[#25D366]/20 hover:bg-[#25D366]/10 transition-colors">
                       <ExternalLink size={12} />
-                      WhatsApp
+                      <span className="hidden sm:inline">WhatsApp</span>
                     </a>
                   )}
                   {isGroupSelected && (
                     <button onClick={handleShowGroupMembers}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] border transition-colors
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] border transition-colors
                         ${showInfoPanel ? 'bg-[var(--zelt-primary)]/5 border-[var(--zelt-primary)]/10 text-[var(--zelt-primary)]' : 'border-gray-200 dark:border-white/[0.06] text-gray-400 dark:text-[#666] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'}`}>
                       <Users size={12} />
                       Membros
@@ -932,19 +1259,19 @@ export default function LiveChatView({ onNavigate }) {
                   )}
                   {!isGroupSelected && (
                     <button onClick={() => setShowInfoPanel(!showInfoPanel)}
-                      className={`p-1.5 rounded-lg border transition-colors ${showInfoPanel ? 'bg-[var(--zelt-primary)]/5 border-[var(--zelt-primary)]/10 text-[var(--zelt-primary)]' : 'border-gray-200 dark:border-white/[0.06] text-gray-400 dark:text-[#666] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'}`}>
+                      className={`p-1.5 rounded border transition-colors ${showInfoPanel ? 'bg-[var(--zelt-primary)]/5 border-[var(--zelt-primary)]/10 text-[var(--zelt-primary)]' : 'border-gray-200 dark:border-white/[0.06] text-gray-400 dark:text-[#666] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'}`}>
                       <Info size={14} />
                     </button>
                   )}
                   <div className="relative">
                     <button onClick={() => setShowChatMenu(!showChatMenu)}
-                      className="p-1.5 rounded-lg border border-gray-200 dark:border-white/[0.06] text-gray-400 dark:text-[#666] hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors">
+                      className="p-1.5 rounded border border-gray-200 dark:border-white/[0.06] text-gray-400 dark:text-[#666] hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors">
                       <MoreVertical size={14} />
                     </button>
                     {showChatMenu && (
                       <>
                         <div className="fixed inset-0 z-40" onClick={() => setShowChatMenu(false)} />
-                        <div className="absolute right-0 top-full mt-1 z-50 w-52 bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-xl shadow-lg py-1 overflow-hidden">
+                        <div className="absolute right-0 top-full mt-1 z-50 w-52 bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded py-1 overflow-hidden">
                           <button onClick={() => { setSearchInChat(searchInChat ? '' : '__OPEN__'); setShowChatMenu(false); }}
                             className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[11px] text-gray-700 dark:text-[#ccc] hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors">
                             <Search size={13} />
@@ -982,8 +1309,12 @@ export default function LiveChatView({ onNavigate }) {
 
               <div ref={chatScrollRef} onScroll={handleChatScroll} className="flex-1 overflow-y-auto chat-scroll px-5 py-3 space-y-2.5 relative">
                 {viewMessages.length === 0 ? (
-                  <div className="flex items-center justify-center py-12 text-gray-400 dark:text-[#666] text-[11px]">
-                    Nenhuma mensagem nesta conversa
+                  <div className="flex flex-col items-center justify-center py-14 text-center px-4">
+                    <div className="w-10 h-10 rounded-full bg-[var(--zelt-primary)]/[0.06] flex items-center justify-center mb-2.5">
+                      <MessageSquare size={15} className="text-[var(--zelt-primary)]/70" />
+                    </div>
+                    <p className="text-[11px] text-gray-400 dark:text-[#666]">Nenhuma mensagem nesta conversa</p>
+                    <p className="text-[10px] text-gray-400/80 dark:text-[#555] mt-1">Envie a primeira mensagem com o campo abaixo.</p>
                   </div>
                 ) : (
                   viewMessages
@@ -1010,7 +1341,7 @@ export default function LiveChatView({ onNavigate }) {
                             </div>
                           )}
                           <div className={`flex w-full mb-0.5 ${fromMe ? 'justify-end' : 'justify-start'}`}>
-                            <div className="max-w-[65%] rounded-2xl px-3 py-2 bg-gray-100/60 dark:bg-[#1e2a33]/40">
+                            <div className="max-w-[65%] rounded-lg px-3 py-2 bg-gray-100/60 dark:bg-[#1e2a33]/40">
                               <p className="text-[12px] italic text-gray-400 dark:text-[#555] text-center">Mensagem excluida</p>
                               <div className="flex items-center justify-end gap-1 mt-1">
                                 <span className="text-[10px] text-gray-300 dark:text-[#444]">{time}</span>
@@ -1029,7 +1360,7 @@ export default function LiveChatView({ onNavigate }) {
                           </div>
                         )}
                         <div className={`flex w-full mb-0.5 ${fromMe ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`msg-bubble max-w-[65%] rounded-2xl px-3 py-2 relative
+                          <div className={`msg-bubble max-w-[65%] rounded-lg px-3 py-2 relative
                             ${!fromMe ? 'bg-gray-100 dark:bg-[#1e2a33] text-gray-900 dark:text-[#e4e4e7] rounded-bl-sm' : ''}
                             ${fromMe && msg.pushName !== 'Zelt.AI' ? 'bg-[var(--zelt-primary)] text-white rounded-br-sm' : ''}
                             ${fromMe && msg.pushName === 'Zelt.AI' ? 'bg-indigo-500 text-white rounded-br-sm' : ''}`}
@@ -1048,32 +1379,58 @@ export default function LiveChatView({ onNavigate }) {
                             {fromMe && msg.pushName !== 'Zelt.AI' && (
                               <div className="text-[9px] text-white/50 uppercase tracking-wide mb-0.5">Voce</div>
                             )}
-                            {msg.messageData?.mediaPath && msg.messageType === 'imageMessage' && (
-                              <a href={getMediaUrl(msg.messageData.mediaPath)} target="_blank" rel="noopener noreferrer" className="block mb-1">
-                                <img src={getMediaUrl(msg.messageData.mediaPath)} alt="Foto" className="rounded-lg max-w-full max-h-[280px] object-cover border border-white/10" loading="lazy" />
-                              </a>
+                            {msg.messageType === 'imageMessage' && (
+                              msg.messageData?.mediaPath ? (
+                                <a href={getMediaUrl(msg.messageData.mediaPath)} target="_blank" rel="noopener noreferrer" className="block mb-1">
+                                  <img src={getMediaUrl(msg.messageData.mediaPath)} alt="Foto" className="rounded max-w-full max-h-[280px] object-cover border border-white/10" loading="lazy" />
+                                </a>
+                              ) : (
+                                <MediaUnavailable label="Foto indisponivel" icon={<ImageIcon size={14} className={fromMe ? 'text-white/60' : 'text-gray-400'} />} fromMe={fromMe} />
+                              )
                             )}
-                            {msg.messageData?.mediaPath && msg.messageType === 'videoMessage' && (
-                              <div className="mb-1">
-                                <video src={getMediaUrl(msg.messageData.mediaPath)} controls className="rounded-lg max-w-full max-h-[280px] border border-white/10" preload="metadata" />
-                              </div>
+                            {msg.messageType === 'videoMessage' && (
+                              msg.messageData?.mediaPath ? (
+                                <div className="mb-1">
+                                  <video src={getMediaUrl(msg.messageData.mediaPath)} controls className="rounded max-w-full max-h-[280px] border border-white/10" preload="metadata" />
+                                </div>
+                              ) : (
+                                <MediaUnavailable label="Video indisponivel" icon={<Film size={14} className={fromMe ? 'text-white/60' : 'text-gray-400'} />} fromMe={fromMe} />
+                              )
                             )}
-                            {msg.messageData?.mediaPath && msg.messageType === 'audioMessage' && (
-                              <div className="mb-1">
-                                <AudioPlayer src={getMediaUrl(msg.messageData.mediaPath)} fromMe={fromMe} />
-                              </div>
+                            {msg.messageType === 'audioMessage' && (
+                              msg.messageData?.mediaPath ? (
+                                <div className="mb-1">
+                                  <AudioPlayer src={getMediaUrl(msg.messageData.mediaPath)} fromMe={fromMe} />
+                                </div>
+                              ) : (
+                                <MediaUnavailable label="Audio indisponivel" icon={<Mic size={14} className={fromMe ? 'text-white/60' : 'text-gray-400'} />} fromMe={fromMe} />
+                              )
                             )}
-                            {text && <p className="text-[13px] leading-[1.4] whitespace-pre-wrap break-words">{text}</p>}
+                            {msg.messageType === 'documentMessage' && (
+                              <DocumentCard fileName={msg.messageText} url={getMediaUrl(msg.messageData?.mediaPath)} fromMe={fromMe} />
+                            )}
+                            {msg.messageType === 'stickerMessage' && (
+                              <StickerImage url={getMediaUrl(msg.messageData?.mediaPath)} fromMe={fromMe} />
+                            )}
+                            {msg.messageType === 'locationMessage' && (
+                              <LocationCard location={msg.messageData?.locationMessage} fromMe={fromMe} />
+                            )}
+                            {msg.messageType === 'contactMessage' && (
+                              <ContactCard contact={msg.messageData?.contactMessage} fromMe={fromMe} />
+                            )}
+                            {text && !['documentMessage', 'stickerMessage', 'locationMessage', 'contactMessage'].includes(msg.messageType) && (
+                              <p className="text-[13px] leading-[1.4] whitespace-pre-wrap break-words">{text}</p>
+                            )}
                             <div className={`flex items-center justify-end gap-1 mt-1 ${fromMe && msg.pushName !== 'Zelt.AI' ? 'text-white/50' : fromMe && msg.pushName === 'Zelt.AI' ? 'text-indigo-200' : 'text-gray-400 dark:text-[#666]'}`}>
                               <span className="text-[10px]">{time}</span>
                               {fromMe && <CheckCheck size={11} />}
                               {fromMe && msg.status === 'sending' && <Loader2 size={9} className="animate-spin" />}
                             </div>
 
-                            <div className="msg-actions absolute top-0 -translate-y-1/2 flex items-center gap-0.5 bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-lg px-0.5 py-0.5 z-10 shadow-sm"
+                            <div className="msg-actions absolute top-0 -translate-y-1/2 flex items-center gap-0.5 bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded px-0.5 py-0.5 z-10"
                               style={{ [fromMe ? 'right' : 'left']: '0' }}>
                               <button onClick={(e) => { e.stopPropagation(); handleCopyText(msg); }}
-                                className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-[#222] text-gray-400 dark:text-[#666] hover:text-gray-600 dark:hover:text-[#ccc] transition-colors"
+                                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-[#222] text-gray-400 dark:text-[#666] hover:text-gray-600 dark:hover:text-[#ccc] transition-colors"
                                 title="Copiar">
                                 <Copy size={12} />
                               </button>
@@ -1087,19 +1444,19 @@ export default function LiveChatView({ onNavigate }) {
                 <div ref={chatEndRef} />
                 {showScrollBtn && (
                   <button onClick={scrollToBottom}
-                    className="sticky bottom-2 left-1/2 -translate-x-1/2 ml-auto mr-auto z-10 w-8 h-8 rounded-full bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/[0.06] shadow-md flex items-center justify-center text-gray-500 dark:text-[#808080] hover:bg-gray-50 dark:hover:bg-[#222] transition-colors">
+                    className="sticky bottom-2 left-1/2 -translate-x-1/2 ml-auto mr-auto z-10 w-8 h-8 rounded-full bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/[0.06] flex items-center justify-center text-gray-500 dark:text-[#808080] hover:bg-gray-50 dark:hover:bg-[#222] transition-colors">
                     <ChevronLeft size={14} className="rotate-[-90deg]" />
                   </button>
                 )}
               </div>
 
-              <footer className="p-3 border-t border-gray-200 dark:border-white/[0.06] shrink-0">
-                <form onSubmit={handleSendMessage} className="border border-gray-200 dark:border-white/[0.06] rounded-xl focus-within:border-[var(--zelt-primary)]/40 transition-colors bg-white dark:bg-[#141414] overflow-hidden p-2">
+              <footer className={`p-3 border-t border-gray-200 dark:border-white/[0.06] shrink-0 ${fullscreen ? 'pb-[max(env(safe-area-inset-bottom),0.75rem)]' : ''}`}>
+                <form onSubmit={handleSendMessage} className="border border-gray-200 dark:border-white/[0.06] rounded focus-within:border-[var(--zelt-primary)]/40 transition-colors bg-white dark:bg-[#141414] overflow-hidden p-2">
                   <textarea rows={2} placeholder="Digite uma mensagem..." value={inputMsg} onChange={(e) => setInputMsg(e.target.value)} onKeyDown={handleKeyDown}
                     className="w-full text-[11px] text-gray-900 dark:text-[#ededed] placeholder-gray-400 dark:placeholder-[#555] bg-transparent resize-none outline-none px-1.5 pt-0.5 leading-relaxed" />
                   <div className="flex items-center justify-end pt-1.5 border-t border-gray-50 dark:border-t-white/[0.06] mt-1 px-1">
                     <button type="submit" disabled={!inputMsg.trim() || sending}
-                      className={`px-3 py-1.5 rounded-lg text-[11px] flex items-center gap-1 transition-colors ${inputMsg.trim() && !sending ? 'bg-[var(--zelt-primary)] text-white hover:bg-[var(--zelt-primary-hover)]' : 'bg-gray-100 dark:bg-[#1a1a1a] text-gray-400 dark:text-[#666] cursor-not-allowed'}`}>
+                      className={`px-3 py-1.5 rounded text-[11px] flex items-center gap-1 transition-colors ${inputMsg.trim() && !sending ? 'bg-[var(--zelt-primary)] text-white hover:bg-[var(--zelt-primary-hover)]' : 'bg-gray-100 dark:bg-[#1a1a1a] text-gray-400 dark:text-[#666] cursor-not-allowed'}`}>
                       {sending ? <Loader2 size={10} className="animate-spin" /> : <Send size={10} />}
                       Enviar
                     </button>
@@ -1111,7 +1468,9 @@ export default function LiveChatView({ onNavigate }) {
         </section>
 
         {selectedChat && showInfoPanel && (
-          <aside className="w-[260px] h-full border-l border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[#141414] flex flex-col shrink-0 overflow-hidden">
+          <>
+            <div className="fixed inset-0 z-40 lg:hidden bg-black/30 animate-[fadeIn_.2s_ease-out]" onClick={() => { setShowInfoPanel(false); setGroupMembers([]); }} />
+            <aside className="fixed lg:static inset-y-0 right-0 z-50 w-[85vw] max-w-[300px] lg:w-[260px] h-full border-l border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[#141414] flex flex-col shrink-0 overflow-hidden animate-[dropdownIn_.18s_ease-out] lg:animate-none">
             <div className="p-3 border-b border-gray-100 dark:border-white/[0.06] flex items-center justify-between">
               <h3 className="text-[10px] text-gray-400 dark:text-[#666] uppercase tracking-wider">
                 {isGroupSelected ? 'Membros do grupo' : 'Informacoes'}
@@ -1136,7 +1495,7 @@ export default function LiveChatView({ onNavigate }) {
                       const phone = member.id?.replace(/@.*/, '') || '';
                       const name = member.pushName || member.name || formatPhone(phone);
                       return (
-                        <div key={member.id || i} className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors">
+                        <div key={member.id || i} className="flex items-center gap-2.5 px-2 py-2 rounded hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors">
                           <Avatar name={name} size={30} />
                           <div className="flex-1 min-w-0">
                             <p className="text-[11px] text-gray-900 dark:text-[#ededed] truncate">{name}</p>
@@ -1159,7 +1518,7 @@ export default function LiveChatView({ onNavigate }) {
                   <p className="text-[10px] text-gray-400 dark:text-[#666] mt-0.5">{displayPhone}</p>
                   {getWhatsAppLink() && (
                     <a href={getWhatsAppLink()} target="_blank" rel="noopener noreferrer"
-                      className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] text-[#25D366] bg-[#25D366]/5 border border-[#25D366]/20 hover:bg-[#25D366]/10 transition-colors">
+                      className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] text-[#25D366] bg-[#25D366]/5 border border-[#25D366]/20 hover:bg-[#25D366]/10 transition-colors">
                       <ExternalLink size={10} />
                       Abrir no WhatsApp
                     </a>
@@ -1174,7 +1533,7 @@ export default function LiveChatView({ onNavigate }) {
                         const active = (selectedMeta?.tags || []).some(t => t.tagId === tag.id);
                         return (
                           <button key={tag.id} onClick={() => handleToggleTag(tag.id)}
-                            className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[9px] transition-all"
+                            className="inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[9px] transition-all"
                             style={{
                               color: active ? tag.color : '#9CA3AF',
                               backgroundColor: active ? `${tag.color}10` : 'transparent',
@@ -1202,8 +1561,62 @@ export default function LiveChatView({ onNavigate }) {
               </>
             )}
           </aside>
+          </>
+        )}
+
+        {showNewContact && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/30 animate-[fadeIn_.2s_ease-out] p-0 sm:p-4" onClick={() => setShowNewContact(false)}>
+            <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-t-2xl sm:rounded-xl w-full sm:max-w-[440px] pb-[env(safe-area-inset-bottom)] animate-[dropdownIn_.18s_ease-out]" onClick={(e) => e.stopPropagation()}>
+              <div className="sm:hidden flex justify-center pt-3 pb-1">
+                <div className="w-10 h-1 rounded-full bg-gray-200 dark:bg-white/[0.12]" />
+              </div>
+              <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-gray-100 dark:border-white/[0.06]">
+                <h3 className="text-base text-gray-900 dark:text-[#ededed]">Novo contato</h3>
+                <button onClick={() => setShowNewContact(false)} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-[#1a1a1a] text-gray-400 dark:text-[#666] hover:text-gray-600 dark:hover:text-[#ccc] transition-colors">
+                  <X size={16} />
+                </button>
+              </div>
+              <form onSubmit={handleCreateContact} className="p-5 sm:p-6 space-y-4">
+                {newContactError && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/40 text-sm text-red-600 dark:text-red-400">
+                    <AlertTriangle size={14} className="shrink-0" /> {newContactError}
+                  </div>
+                )}
+                <div>
+                  <label className="text-xs text-gray-400 dark:text-[#666] uppercase tracking-wider block mb-1.5">Nome</label>
+                  <input type="text" value={newContact.name} onChange={(e) => setNewContact(p => ({ ...p, name: e.target.value }))}
+                    placeholder="Nome do contato"
+                    className="w-full px-4 py-2.5 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg bg-white dark:bg-[#141414] text-gray-900 dark:text-[#ededed] placeholder-gray-400 dark:placeholder-[#555] focus:border-[var(--zelt-primary)]/40 transition-colors" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 dark:text-[#666] uppercase tracking-wider block mb-1.5">Telefone com DDD *</label>
+                  <input type="tel" value={newContact.phone} onChange={(e) => setNewContact(p => ({ ...p, phone: e.target.value }))}
+                    placeholder="Ex: (11) 91234-5678" required autoFocus
+                    className="w-full px-4 py-2.5 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg bg-white dark:bg-[#141414] text-gray-900 dark:text-[#ededed] placeholder-gray-400 dark:placeholder-[#555] focus:border-[var(--zelt-primary)]/40 transition-colors" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 dark:text-[#666] uppercase tracking-wider block mb-1.5">Mensagem inicial (opcional)</label>
+                  <textarea rows={3} value={newContact.message} onChange={(e) => setNewContact(p => ({ ...p, message: e.target.value }))}
+                    placeholder="Digite a primeira mensagem..."
+                    className="w-full px-4 py-2.5 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg bg-white dark:bg-[#141414] text-gray-900 dark:text-[#ededed] placeholder-gray-400 dark:placeholder-[#555] focus:border-[var(--zelt-primary)]/40 resize-none transition-colors" />
+                </div>
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+                  <button type="button" onClick={() => setShowNewContact(false)}
+                    className="px-4 py-2.5 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg text-gray-600 dark:text-[#ccc] hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors">
+                    Cancelar
+                  </button>
+                  <button type="submit" disabled={newContactSaving}
+                    className="px-4 py-2.5 text-sm bg-[var(--zelt-primary)] text-white rounded-lg hover:bg-[var(--zelt-primary-hover)] transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+                    {newContactSaving ? <Loader2 size={14} className="animate-spin" /> : <Send size={13} />}
+                    {newContactSaving ? 'Criando...' : 'Criar contato'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         )}
       </div>
+      )}
     </>
   );
 }

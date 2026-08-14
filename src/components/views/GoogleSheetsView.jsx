@@ -57,7 +57,7 @@ export default function GoogleSheetsView() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="cards-carousel">
           <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-lg p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-[#0F9D58]/10 flex items-center justify-center"><FileSpreadsheet size={18} className="text-[#0F9D58]" /></div>
             <div><p className="text-xl text-gray-900 dark:text-[#ededed]">{spreadsheets.length}</p><p className="text-xs text-gray-400 dark:text-[#666]">Planilhas</p></div>

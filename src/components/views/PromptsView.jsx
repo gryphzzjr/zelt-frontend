@@ -1,11 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { onboardingApi } from '../../lib/api';
+import { onboardingApi, knowledgeApi, geminiApi } from '../../lib/api';
 import {
-  Search, Plus, FileText, File, X, Check, Save, RotateCcw,
+  Search, FileText, File, X, Check, Save, RotateCcw,
   ChevronDown, ChevronUp, Clock, Send, Trash2, History,
-  BookOpen, Sparkles, Settings2, MessageSquare, Zap,
-  AlertTriangle, Info, MoreVertical, ToggleLeft, ToggleRight,
-  Brain, Cpu, Eye, EyeOff, ArrowRight,
+  BookOpen, Sparkles, Settings2, MessageSquare,
+  AlertTriangle, Info, Brain, Loader2,
 } from 'lucide-react';
 
 const PERSONALITY_OPTIONS = [
@@ -24,18 +23,10 @@ const LANGUAGE_OPTIONS = [
   { id: 'fr', label: 'Frances' },
 ];
 
-const MOCK_KB_CONTENTS = [
-  { id: 1, name: 'Politica de Trocas', category: 'Juridico', type: 'texto', updatedAt: '12 Jul 2026', active: true },
-  { id: 2, name: 'Horario de Funcionamento', category: 'Institucional', type: 'texto', updatedAt: '10 Jul 2026', active: true },
-  { id: 3, name: 'Tabela de Planos 2026', category: 'Produtos', type: 'pdf', updatedAt: '08 Jul 2026', active: true },
-  { id: 4, name: 'FAQ do Cliente', category: 'Suporte', type: 'texto', updatedAt: '03 Jul 2026', active: false },
-  { id: 5, name: 'Manual do Produto', category: 'Produtos', type: 'pdf', updatedAt: '20 Jun 2026', active: false },
-];
-
-const DEFAULT_PROMPT_CONFIG = {
-  name: 'Assistente Zelt',
-  systemPrompt: 'Voce e o Assistente Zelt, um atendente virtual inteligente e prestativo. Seu objetivo e ajudar os clientes com duvidas sobre produtos, servicos, planos e suporte tecnico. Responda sempre de forma clara, educada e profissional.',
-  objective: 'Atender e auxiliar clientes com informacoes sobre a empresa, produtos e suporte.',
+const EMPTY_CONFIG = {
+  name: '',
+  systemPrompt: '',
+  objective: '',
   personality: 'profissional',
   language: 'pt-br',
   temperature: 0.7,
@@ -44,6 +35,51 @@ const DEFAULT_PROMPT_CONFIG = {
   onlyKB: true,
   allowCreative: false,
 };
+
+const SYSTEM_PROMPT_PLACEHOLDER = `Exemplo de como escrever:
+
+Voce e o assistente virtual da minha empresa.
+
+Sua missao e atender os clientes com educacao e agilidade, ajudando com:
+- Produtos e servicos oferecidos
+- Tabela de precos e condicoes de pagamento
+- Horarios de atendimento e formas de contato
+- Duvidas sobre pedidos, trocas e devolucoes
+
+Sempre responda usando a base de conhecimento cadastrada.
+Quando nao souber a resposta, peca desculpas e informe que um atendente humano vai ajudar em seguida.`;
+
+function formatDate(iso) {
+  if (!iso) return '';
+  try {
+    return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+  } catch {
+    return '';
+  }
+}
+
+function formatDateTime(iso) {
+  try {
+    return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return '';
+  }
+}
+
+function nowTime() {
+  return new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function mapKbItem(item) {
+  return {
+    id: item.id,
+    name: item.title || item.name || 'Sem titulo',
+    category: item.category || 'Geral',
+    type: item.type === 'text' ? 'texto' : item.type || 'texto',
+    updatedAt: formatDate(item.updatedAt),
+    active: String(item.status || 'ACTIVE').toUpperCase() === 'ACTIVE',
+  };
+}
 
 function Toggle({ checked, onChange, size = 'md' }) {
   const sizes = {
@@ -67,7 +103,6 @@ function Toggle({ checked, onChange, size = 'md' }) {
 }
 
 function Slider({ value, onChange, min = 0, max = 2, step = 0.1 }) {
-  const percentage = ((value - min) / (max - min)) * 100;
   return (
     <div className="flex items-center gap-3">
       <input
@@ -87,11 +122,13 @@ function Slider({ value, onChange, min = 0, max = 2, step = 0.1 }) {
   );
 }
 
-function KnowledgeBaseModal({ open, onClose, contents, onToggle, onSave }) {
+function KnowledgeBaseModal({ open, onClose, contents, saving, onSave }) {
   const [search, setSearch] = useState('');
   const [localContents, setLocalContents] = useState(contents);
 
   useEffect(() => { setLocalContents(contents); }, [contents]);
+
+  if (!open) return null;
 
   const filtered = localContents.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -100,16 +137,17 @@ function KnowledgeBaseModal({ open, onClose, contents, onToggle, onSave }) {
 
   const activeCount = localContents.filter(c => c.active).length;
 
-  if (!open) return null;
-
   const typeIcon = (type) => {
     if (type === 'pdf') return <File size={14} className="text-red-400" />;
     return <FileText size={14} className="text-[var(--zelt-primary)]" />;
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 animate-in fade-in duration-200">
-      <div className="w-full max-w-2xl bg-white dark:bg-[#141414] rounded-2xl border border-gray-200 dark:border-white/[0.06] shadow-xl overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 animate-in fade-in duration-200">
+      <div className="w-full max-w-2xl max-h-[92vh] flex flex-col bg-white dark:bg-[#141414] rounded-t-2xl sm:rounded-2xl border border-gray-200 dark:border-white/[0.06] overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
+        <div className="sm:hidden flex justify-center pt-3 pb-1 shrink-0">
+          <div className="w-10 h-1 rounded-full bg-gray-200 dark:bg-white/[0.12]" />
+        </div>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-white/[0.06]">
           <div className="flex items-center gap-3">
@@ -126,9 +164,9 @@ function KnowledgeBaseModal({ open, onClose, contents, onToggle, onSave }) {
           </button>
         </div>
 
-        {/* Search + Add */}
-        <div className="px-6 py-3 border-b border-gray-100 dark:border-white/[0.06] flex items-center gap-2">
-          <div className="relative flex-1">
+        {/* Search */}
+        <div className="px-6 py-3 border-b border-gray-100 dark:border-white/[0.06]">
+          <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-[#666]" />
             <input
               type="text"
@@ -138,14 +176,15 @@ function KnowledgeBaseModal({ open, onClose, contents, onToggle, onSave }) {
               className="w-full pl-9 pr-3 py-2 text-xs border border-gray-200 dark:border-white/[0.06] rounded-lg focus:outline-none focus:border-[var(--zelt-primary)]/40 transition-colors"
             />
           </div>
-          <button className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-white bg-[var(--zelt-primary)] hover:bg-[var(--zelt-primary-hover)] rounded-lg transition-colors shrink-0">
-            <Plus size={13} /> Adicionar
-          </button>
         </div>
 
         {/* List */}
-        <div className="max-h-[380px] overflow-y-auto">
-          {filtered.length === 0 ? (
+        <div className="flex-1 overflow-y-auto">
+          {localContents.length === 0 ? (
+            <div className="py-12 text-center text-xs text-gray-400 dark:text-[#666]">
+              Nenhum conteudo cadastrado. Adicione conteudos na pagina Base de Conhecimento.
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="py-12 text-center text-xs text-gray-400 dark:text-[#666]">Nenhum conteudo encontrado</div>
           ) : (
             <div className="divide-y divide-gray-50">
@@ -184,7 +223,12 @@ function KnowledgeBaseModal({ open, onClose, contents, onToggle, onSave }) {
           <button onClick={onClose} className="px-3 py-1.5 text-xs text-gray-500 dark:text-[#808080] hover:bg-gray-100 rounded-lg transition-colors">
             Cancelar
           </button>
-          <button onClick={() => onSave(localContents)} className="px-3 py-1.5 text-xs font-medium text-white bg-[var(--zelt-primary)] hover:bg-[var(--zelt-primary-hover)] rounded-lg transition-colors">
+          <button
+            onClick={() => onSave(localContents)}
+            disabled={saving}
+            className="px-3 py-1.5 text-xs font-medium text-white bg-[var(--zelt-primary)] hover:bg-[var(--zelt-primary-hover)] rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
+          >
+            {saving && <Loader2 size={12} className="animate-spin" />}
             Salvar Selecao
           </button>
         </div>
@@ -209,22 +253,36 @@ function ResponseInfo({ info, expanded, onToggle }) {
       </button>
       {expanded && (
         <div className="mt-1 p-3 bg-gray-50 dark:bg-[#111] border border-gray-100 dark:border-white/[0.06] rounded-lg space-y-1.5">
-          <div className="flex justify-between text-[10px]">
-            <span className="text-gray-400 dark:text-[#666]">Tempo de resposta</span>
-            <span className="text-gray-600 dark:text-[#aaa] font-medium">{info.responseTime}ms</span>
-          </div>
-          <div className="flex justify-between text-[10px]">
-            <span className="text-gray-400 dark:text-[#666]">Tokens utilizados</span>
-            <span className="text-gray-600 dark:text-[#aaa] font-medium">{info.tokens}</span>
-          </div>
-          <div className="flex justify-between text-[10px]">
-            <span className="text-gray-400 dark:text-[#666]">Confianca</span>
-            <span className="text-gray-600 dark:text-[#aaa] font-medium">{info.confidence}%</span>
-          </div>
-          <div className="flex justify-between text-[10px]">
-            <span className="text-gray-400 dark:text-[#666]">Modelo</span>
-            <span className="text-gray-600 dark:text-[#aaa] font-medium">{info.model}</span>
-          </div>
+          {info.responseTime != null && (
+            <div className="flex justify-between text-[10px]">
+              <span className="text-gray-400 dark:text-[#666]">Tempo de resposta</span>
+              <span className="text-gray-600 dark:text-[#aaa] font-medium">{info.responseTime}ms</span>
+            </div>
+          )}
+          {info.tokensTotal != null && (
+            <div className="flex justify-between text-[10px]">
+              <span className="text-gray-400 dark:text-[#666]">Tokens utilizados</span>
+              <span className="text-gray-600 dark:text-[#aaa] font-medium">{info.tokensTotal}</span>
+            </div>
+          )}
+          {info.tokensPrompt != null && (
+            <div className="flex justify-between text-[10px]">
+              <span className="text-gray-400 dark:text-[#666]">Tokens de entrada</span>
+              <span className="text-gray-600 dark:text-[#aaa] font-medium">{info.tokensPrompt}</span>
+            </div>
+          )}
+          {info.tokensCompletion != null && (
+            <div className="flex justify-between text-[10px]">
+              <span className="text-gray-400 dark:text-[#666]">Tokens de saida</span>
+              <span className="text-gray-600 dark:text-[#aaa] font-medium">{info.tokensCompletion}</span>
+            </div>
+          )}
+          {info.model && (
+            <div className="flex justify-between text-[10px]">
+              <span className="text-gray-400 dark:text-[#666]">Modelo</span>
+              <span className="text-gray-600 dark:text-[#aaa] font-medium">{info.model}</span>
+            </div>
+          )}
           {info.kbUsed && info.kbUsed.length > 0 && (
             <div className="pt-1.5 border-t border-gray-100 dark:border-white/[0.06]">
               <span className="text-[10px] text-gray-400 dark:text-[#666]">Bases consultadas:</span>
@@ -244,24 +302,34 @@ function ResponseInfo({ info, expanded, onToggle }) {
 }
 
 export default function PromptsView() {
-  const [config, setConfig] = useState(DEFAULT_PROMPT_CONFIG);
+  const [config, setConfig] = useState(EMPTY_CONFIG);
+  const [configLoading, setConfigLoading] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const [kbContents, setKbContents] = useState(MOCK_KB_CONTENTS);
+  const [kbContents, setKbContents] = useState([]);
+  const [kbLoading, setKbLoading] = useState(true);
+  const [kbSaving, setKbSaving] = useState(false);
   const [kbModalOpen, setKbModalOpen] = useState(false);
-  const [lastSync, setLastSync] = useState('12 Jul 2026, 14:30');
+  const [lastSync, setLastSync] = useState('');
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [expandedInfo, setExpandedInfo] = useState(null);
+  const [lastModel, setLastModel] = useState('');
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
 
   const [testHistory, setTestHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const updateConfig = useCallback((field, value) => {
     setConfig(prev => ({ ...prev, [field]: value }));
@@ -269,85 +337,155 @@ export default function PromptsView() {
     setSaved(false);
   }, []);
 
+  const loadConfig = useCallback(async () => {
+    setConfigLoading(true);
+    try {
+      const res = await geminiApi.getConfig();
+      setConfig({ ...EMPTY_CONFIG, ...(res.data || {}) });
+    } catch {
+      showToast('Erro ao carregar configuracao da IA', 'error');
+    } finally {
+      setConfigLoading(false);
+    }
+  }, []);
+
+  const loadKnowledge = useCallback(async () => {
+    setKbLoading(true);
+    try {
+      const res = await knowledgeApi.list({ limit: 200 });
+      const items = (res.items || []).map(mapKbItem);
+      setKbContents(items);
+      setLastSync(formatDateTime(Date.now()));
+    } catch {
+      showToast('Erro ao carregar base de conhecimento', 'error');
+    } finally {
+      setKbLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadConfig();
+    loadKnowledge();
+  }, [loadConfig, loadKnowledge]);
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const handleSave = async () => {
     setSaving(true);
-    await new Promise(r => setTimeout(r, 600));
-    setSaving(false);
-    setSaved(true);
-    setHasChanges(false);
-    setTimeout(() => setSaved(false), 2000);
-    try { await onboardingApi.completeStep('prompts'); } catch {}
+    try {
+      await geminiApi.saveConfig(config);
+      setSaved(true);
+      setHasChanges(false);
+      setTimeout(() => setSaved(false), 2000);
+      try { await onboardingApi.completeStep('prompts'); } catch {}
+    } catch {
+      showToast('Erro ao salvar configuracao', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleRestore = () => {
-    setConfig(DEFAULT_PROMPT_CONFIG);
-    setHasChanges(true);
-    setSaved(false);
+  const handleRestore = async () => {
+    setSaving(true);
+    try {
+      await geminiApi.resetConfig();
+      const res = await geminiApi.getConfig();
+      setConfig({ ...EMPTY_CONFIG, ...(res.data || {}) });
+      setHasChanges(false);
+      setSaved(false);
+      showToast('Configuracao restaurada para o padrao');
+    } catch {
+      showToast('Erro ao restaurar configuracao', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleSendMessage = async () => {
-    if (!input.trim() || sending) return;
+  const handleKbSave = async (updated) => {
+    setKbSaving(true);
+    try {
+      const changes = updated.filter(item => {
+        const original = kbContents.find(c => c.id === item.id);
+        return original && original.active !== item.active;
+      });
+      for (const item of changes) {
+        await knowledgeApi.update(item.id, { status: item.active ? 'ACTIVE' : 'INACTIVE' });
+      }
+      await loadKnowledge();
+      setHasChanges(true);
+      setKbModalOpen(false);
+      showToast('Base de conhecimento atualizada');
+    } catch {
+      showToast('Erro ao salvar base de conhecimento', 'error');
+    } finally {
+      setKbSaving(false);
+    }
+  };
+
+  const handleSendMessage = async (prefill) => {
+    const text = (prefill ?? input).trim();
+    if (!text || sending) return;
 
     const userMsg = {
       id: Date.now(),
       role: 'user',
-      content: input.trim(),
-      timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      content: text,
+      timestamp: nowTime(),
     };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setSending(true);
 
-    await new Promise(r => setTimeout(r, 800 + Math.random() * 1200));
+    try {
+      const res = await geminiApi.test({
+        message: text,
+        systemPrompt: config.systemPrompt,
+        temperature: config.temperature,
+        maxTokens: config.maxTokens,
+        onlyKB: config.onlyKB,
+        allowCreative: config.allowCreative,
+        allowEmojis: config.allowEmojis,
+      });
+      const data = res?.data || {};
+      const hasInfo = !!(data.responseTime != null || data.model || (data.kbUsed && data.kbUsed.length > 0) || data.tokens);
 
-    const activeKBContents = kbContents.filter(c => c.active);
-    const confidence = Math.floor(75 + Math.random() * 23);
-    const tokens = Math.floor(50 + Math.random() * 200);
-    const responseTime = Math.floor(600 + Math.random() * 1400);
+      const aiMsg = {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: data.reply || 'Nao foi possivel gerar uma resposta.',
+        timestamp: nowTime(),
+        info: hasInfo ? {
+          responseTime: data.responseTime,
+          tokensPrompt: data.tokens?.prompt,
+          tokensCompletion: data.tokens?.completion,
+          tokensTotal: data.tokens?.total,
+          model: data.model,
+          kbUsed: data.kbUsed || [],
+        } : undefined,
+      };
 
-    const aiMsg = {
-      id: Date.now() + 1,
-      role: 'assistant',
-      content: getSimulatedResponse(userMsg.content, activeKBContents),
-      timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-      info: {
-        responseTime,
-        tokens,
-        confidence,
-        model: 'GPT-4o-mini',
-        kbUsed: activeKBContents.slice(0, 2).map(c => c.name),
-      },
-    };
+      setMessages(prev => [...prev, aiMsg]);
+      setExpandedInfo(aiMsg.id);
+      if (data.model) setLastModel(data.model);
 
-    setMessages(prev => [...prev, aiMsg]);
-    setExpandedInfo(aiMsg.id);
-    setSending(false);
-
-    setTestHistory(prev => [
-      { id: Date.now(), question: userMsg.content, answer: aiMsg.content, timestamp: new Date().toLocaleString('pt-BR') },
-      ...prev.slice(0, 9),
-    ]);
-  };
-
-  const getSimulatedResponse = (question, activeKB) => {
-    const q = question.toLowerCase();
-    if (q.includes('plano') || q.includes('preco') || q.includes('valor')) {
-      return 'Temos varios planos disponiveis: Starter (gratuito por 14 dias), Profissional e Enterprise. O plano Starter inclui ate 100 conversas/mes, enquanto o Profissional oferece conversas ilimitadas e integracao completa. Deseja que eu detalhe as features de algum plano especifico?';
+      setTestHistory(prev => [
+        { id: Date.now(), question: text, answer: aiMsg.content, timestamp: new Date().toLocaleString('pt-BR') },
+        ...prev.slice(0, 9),
+      ]);
+    } catch (err) {
+      const errMsg = {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: 'Erro ao consultar a IA: ' + (err.message || 'tente novamente'),
+        error: true,
+        timestamp: nowTime(),
+      };
+      setMessages(prev => [...prev, errMsg]);
+    } finally {
+      setSending(false);
     }
-    if (q.includes('horario') || q.includes('funciona')) {
-      return 'Nosso horario de atendimento e de segunda a sexta, das 9h as 18h (horario de Brasilia). Nosso chatbot esta disponivel 24h por dia, 7 dias por semana para auxiliar com duvidas comuns.';
-    }
-    if (q.includes('troca') || q.includes('devolucao')) {
-      return 'De acordo com nossa politica de trocas, o cliente possui ate 7 dias uteis apos o recebimento do produto para solicitar a troca. O item deve estar em perfeitas condicoes, com embalagem original e nota fiscal. Posso te ajudar com mais alguma informacao?';
-    }
-    if (activeKB.length > 0) {
-      return `Com base na nossa base de conhecimento, encontrei informacoes relevantes sobre sua duvida. ${activeKB[0]?.name ? `Acesse o conteudo "${activeKB[0].name}" para mais detalhes.` : ''} Posso esclarecer algo mais especifico?`;
-    }
-    return 'Obrigado pela sua pergunta! No momento nao encontrei uma resposta exata na base de conhecimento configurada. Recomendo entrar em contato com nosso suporte para uma assistencia mais personalizada. Posso ajudar com mais alguma coisa?';
   };
 
   const handleClearChat = () => {
@@ -358,32 +496,31 @@ export default function PromptsView() {
   const handleNewSession = () => {
     setMessages([]);
     setExpandedInfo(null);
-    setConfig(DEFAULT_PROMPT_CONFIG);
-    setHasChanges(false);
   };
 
   const activeCount = kbContents.filter(c => c.active).length;
+  const assistantName = config.name || 'Assistente IA';
+  const modelLabel = lastModel || 'Modelo de IA';
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex gap-6">
+    <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 lg:h-[calc(100vh-8rem)]">
+      {toast && (
+        <div className={`fixed top-4 right-4 z-[100] px-4 py-2.5 rounded-xl text-xs shadow-lg animate-in fade-in ${toast.type === 'error' ? 'bg-red-500 text-white' : 'bg-emerald-500 text-white'}`}>
+          {toast.message}
+        </div>
+      )}
+
       <KnowledgeBaseModal
         open={kbModalOpen}
         onClose={() => setKbModalOpen(false)}
         contents={kbContents}
-        onToggle={(id) => {
-          setKbContents(prev => prev.map(c => c.id === id ? { ...c, active: !c.active } : c));
-        }}
-        onSave={(updated) => {
-          setKbContents(updated);
-          setKbModalOpen(false);
-          setHasChanges(true);
-          setLastSync(new Date().toLocaleString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }));
-        }}
+        saving={kbSaving}
+        onSave={handleKbSave}
       />
 
       <>
           {/* ===== LEFT COLUMN - CONFIG ===== */}
-          <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+          <div className="lg:flex-1 lg:min-w-0 lg:flex lg:flex-col lg:overflow-hidden">
         {/* Config Header */}
         <div className="flex items-center justify-between mb-4 shrink-0">
           <div className="flex items-center gap-2.5">
@@ -410,7 +547,7 @@ export default function PromptsView() {
         </div>
 
         {/* Config Scroll Area */}
-        <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+        <div className="lg:flex-1 lg:overflow-y-auto space-y-4 pr-1">
           {/* Basic Settings */}
           <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-2xl p-5 space-y-4">
             <div>
@@ -430,8 +567,8 @@ export default function PromptsView() {
                 value={config.systemPrompt}
                 onChange={(e) => updateConfig('systemPrompt', e.target.value)}
                 rows={8}
+                placeholder={SYSTEM_PROMPT_PLACEHOLDER}
                 className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg focus:outline-none focus:border-[var(--zelt-primary)]/40 transition-colors resize-none leading-relaxed font-mono text-[13px]"
-                placeholder="Escreva as instrucoes que definem o comportamento da IA..."
               />
               <p className="text-[10px] text-gray-400 dark:text-[#666] mt-1">{config.systemPrompt.length} caracteres</p>
             </div>
@@ -443,11 +580,11 @@ export default function PromptsView() {
                 value={config.objective}
                 onChange={(e) => updateConfig('objective', e.target.value)}
                 className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg focus:outline-none focus:border-[var(--zelt-primary)]/40 transition-colors"
-                placeholder="Descreva o objetivo principal..."
+                placeholder="Ex: Atender clientes com informacoes sobre produtos, planos e suporte"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] font-medium text-gray-400 dark:text-[#666] uppercase tracking-wider mb-1.5">Personalidade</label>
                 <div className="relative">
@@ -550,17 +687,24 @@ export default function PromptsView() {
                 <div>
                   <h3 className="text-xs font-semibold text-gray-900 dark:text-[#ededed]">Base de Conhecimento Ativa</h3>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[10px] text-gray-400 dark:text-[#666]">{activeCount} conteudo{activeCount !== 1 ? 's' : ''} ativo{activeCount !== 1 ? 's' : ''}</span>
-                    <span className="text-[10px] text-gray-300 dark:text-[#555]">|</span>
-                    <span className="flex items-center gap-1 text-[10px] text-gray-400 dark:text-[#666]">
-                      <Clock size={9} /> {lastSync}
-                    </span>
+                    {kbLoading ? (
+                      <Loader2 size={10} className="animate-spin text-gray-400" />
+                    ) : (
+                      <>
+                        <span className="text-[10px] text-gray-400 dark:text-[#666]">{activeCount} conteudo{activeCount !== 1 ? 's' : ''} ativo{activeCount !== 1 ? 's' : ''}</span>
+                        <span className="text-[10px] text-gray-300 dark:text-[#555]">|</span>
+                        <span className="flex items-center gap-1 text-[10px] text-gray-400 dark:text-[#666]">
+                          <Clock size={9} /> {lastSync || 'carregando...'}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
               <button
                 onClick={() => setKbModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--zelt-primary)] bg-[var(--zelt-primary)]/5 border border-[var(--zelt-primary)]/10 rounded-lg hover:bg-[var(--zelt-primary)]/10 transition-colors"
+                disabled={kbLoading}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--zelt-primary)] bg-[var(--zelt-primary)]/5 border border-[var(--zelt-primary)]/10 rounded-lg hover:bg-[var(--zelt-primary)]/10 transition-colors disabled:opacity-40"
               >
                 Gerenciar Conhecimento
               </button>
@@ -571,7 +715,7 @@ export default function PromptsView() {
           <div className="flex items-center gap-2 pb-4">
             <button
               onClick={handleSave}
-              disabled={saving || !hasChanges}
+              disabled={saving || !hasChanges || configLoading}
               className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white bg-[var(--zelt-primary)] hover:bg-[var(--zelt-primary-hover)] rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {saving ? (
@@ -583,7 +727,8 @@ export default function PromptsView() {
             </button>
             <button
               onClick={handleRestore}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-gray-600 dark:text-[#aaa] bg-gray-100 dark:bg-[#1a1a1a] hover:bg-gray-200 rounded-lg transition-colors"
+              disabled={saving || configLoading}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-gray-600 dark:text-[#aaa] bg-gray-100 dark:bg-[#1a1a1a] hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-40"
             >
               <RotateCcw size={13} /> Restaurar Padrao
             </button>
@@ -592,7 +737,7 @@ export default function PromptsView() {
       </div>
 
       {/* ===== RIGHT COLUMN - TEST CHAT ===== */}
-      <div className="w-[420px] shrink-0 flex flex-col bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-2xl overflow-hidden">
+      <div className="w-full lg:w-[420px] lg:shrink-0 h-[70dvh] lg:h-auto flex flex-col bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-2xl overflow-hidden">
         {/* Chat Header */}
         <div className="px-5 py-3.5 border-b border-gray-100 dark:border-white/[0.06] shrink-0">
           <div className="flex items-center justify-between mb-2">
@@ -604,8 +749,8 @@ export default function PromptsView() {
                 <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-white" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-gray-900 dark:text-[#ededed]">{config.name}</p>
-                <p className="text-[10px] text-gray-400 dark:text-[#666]">GPT-4o-mini</p>
+                <p className="text-xs font-semibold text-gray-900 dark:text-[#ededed]">{assistantName}</p>
+                <p className="text-[10px] text-gray-400 dark:text-[#666]">{modelLabel}</p>
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -636,7 +781,11 @@ export default function PromptsView() {
             <span className="flex items-center gap-1">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Online
             </span>
-            <span>{activeCount} base{activeCount !== 1 ? 's' : ''} ativa{activeCount !== 1 ? 's' : ''}</span>
+            {kbLoading ? (
+              <span className="flex items-center gap-1"><Loader2 size={9} className="animate-spin" /> Carregando base...</span>
+            ) : (
+              <span>{activeCount} base{activeCount !== 1 ? 's' : ''} ativa{activeCount !== 1 ? 's' : ''}</span>
+            )}
           </div>
         </div>
 
@@ -653,12 +802,8 @@ export default function PromptsView() {
                     <button
                       key={item.id}
                       onClick={() => {
-                        setMessages(prev => [
-                          ...prev,
-                          { id: item.id, role: 'user', content: item.question, timestamp: '' },
-                          { id: item.id + 1, role: 'assistant', content: item.answer, timestamp: '' },
-                        ]);
                         setShowHistory(false);
+                        handleSendMessage(item.question);
                       }}
                       className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-gray-50 dark:bg-[#111] dark:hover:bg-[#1a1a1a] transition-colors"
                     >
@@ -691,7 +836,9 @@ export default function PromptsView() {
                   <div className={`px-3.5 py-2.5 rounded-2xl text-[13px] leading-relaxed ${
                     msg.role === 'user'
                       ? 'bg-[var(--zelt-primary)] text-white rounded-br-md'
-                      : 'bg-gray-100 dark:bg-[#1a1a1a] text-gray-800 rounded-bl-md'
+                      : msg.error
+                        ? 'bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 text-red-700 dark:text-red-300 rounded-bl-md'
+                        : 'bg-gray-100 dark:bg-[#1a1a1a] text-gray-800 rounded-bl-md'
                   }`}>
                     {msg.content}
                   </div>
@@ -749,7 +896,7 @@ export default function PromptsView() {
               />
             </div>
             <button
-              onClick={handleSendMessage}
+              onClick={() => handleSendMessage()}
               disabled={!input.trim() || sending}
               className="p-2.5 text-white bg-[var(--zelt-primary)] hover:bg-[var(--zelt-primary-hover)] rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
             >

@@ -2,12 +2,15 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   MessageSquare, Plus, RefreshCw, QrCode, Wifi, WifiOff,
   Settings, Trash2, MoreHorizontal, X, Check, Copy,
-  Send, Phone, PhoneOff, AlertTriangle, PowerOff, RotateCcw, Globe,
+  Send, PhoneOff, AlertTriangle, PowerOff, RotateCcw, Globe,
   Loader2, Eye, Pencil, User, Users, Shield, Hash, Calendar, Database,
-  Camera, ArrowLeft, Save, BarChart3, Info, Bot,
+  Camera, ArrowLeft, Save, BarChart3, Info, Bot, Phone,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { evolutionApi, onboardingApi, workspaceApi, geminiApi } from '../../lib/api';
+import { evolutionApi, onboardingApi, geminiApi } from '../../lib/api';
+import Pagination from '../../components/ui/Pagination';
+
+const PAGE_SIZE = 10;
 
 const STATUS_MAP = {
   open: { label: 'Conectado', color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/20', border: 'border-emerald-100 dark:border-emerald-500/30', dot: 'bg-emerald-500' },
@@ -17,7 +20,7 @@ const STATUS_MAP = {
 };
 
 export default function WhatsAppView() {
-  const { workspace, selectWorkspaceById } = useAuth();
+  const { user } = useAuth();
   const [instances, setInstances] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -27,6 +30,7 @@ export default function WhatsAppView() {
   const [actionLoading, setActionLoading] = useState(null);
   const [toast, setToast] = useState(null);
   const [detailInstance, setDetailInstance] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const menuRef = useRef(null);
 
@@ -44,7 +48,7 @@ export default function WhatsAppView() {
   const fetchInstances = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await evolutionApi.listInstances(workspace?.id);
+      const res = await evolutionApi.listInstances();
       const raw = Array.isArray(res) ? res
         : Array.isArray(res?.data) ? res.data
         : Array.isArray(res?.instances) ? res.instances
@@ -73,21 +77,20 @@ export default function WhatsAppView() {
     } finally {
       setLoading(false);
     }
-  }, [showToast, workspace?.id]);
+  }, [showToast]);
 
   useEffect(() => { fetchInstances(); }, [fetchInstances]);
 
   const connectedCount = instances.filter(i => i.status === 'open').length;
+  const pageCount = Math.max(1, Math.ceil(instances.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, pageCount);
+  const paginatedInstances = instances.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-  const handleCreateInstance = async (instanceName, webhookUrl) => {
+  const handleCreateInstance = async (instanceName) => {
     try {
       setActionLoading('create');
-      const res = await evolutionApi.createInstance(instanceName, webhookUrl || undefined, workspace?.id);
+      const res = await evolutionApi.createInstance(instanceName);
       const generatedName = res?.generatedName || instanceName;
-      if (workspace?.id) {
-        await workspaceApi.update(workspace.id, { instanceName: generatedName, instanceDisplayName: instanceName });
-        await selectWorkspaceById(null, workspace.id);
-      }
       showToast('Instancia criada com sucesso');
       setShowCreateModal(false);
       await fetchInstances();
@@ -129,10 +132,6 @@ export default function WhatsAppView() {
     try {
       setActionLoading(instanceName);
       await evolutionApi.deleteInstance(instanceName);
-      if (workspace?.id && workspace.instanceName === instanceName) {
-        await workspaceApi.update(workspace.id, { instanceName: null });
-        await selectWorkspaceById(null, workspace.id);
-      }
       showToast('Instancia excluida');
       setConfirmDisconnect(null);
       await fetchInstances();
@@ -185,7 +184,7 @@ export default function WhatsAppView() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="cards-carousel">
           {[
             { label: 'Instancias Totais', value: instances.length, color: 'text-gray-900 dark:text-[#ededed]', bg: 'bg-gray-50 dark:bg-[#111]', icon: Globe },
             { label: 'Conectadas', value: connectedCount, color: 'text-[#25D366]', bg: 'bg-[#25D366]/10', icon: Wifi },
@@ -218,7 +217,8 @@ export default function WhatsAppView() {
                 <p className="text-xs text-gray-300 dark:text-[#555] mt-1">Crie uma nova instancia para comecar</p>
               </div>
             ) : (
-              <table className="w-full">
+              <>
+              <table className="w-full table-stack">
                 <thead className="bg-gray-50 dark:bg-[#111] border-b border-gray-100 dark:border-white/[0.06]">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs text-gray-400 dark:text-[#666] uppercase tracking-wider">Instancia</th>
@@ -229,7 +229,7 @@ export default function WhatsAppView() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {instances.map((inst) => {
+                  {paginatedInstances.map((inst) => {
                     const statusKey = getStatus(inst);
                     const st = STATUS_MAP[statusKey] || STATUS_MAP.close;
                     const isLoading = actionLoading === inst.instanceName;
@@ -237,26 +237,26 @@ export default function WhatsAppView() {
                       <tr key={inst.instanceName || inst.instanceId}
                         className="hover:bg-gray-50/50 dark:hover:bg-[#1a1a1a]/50 transition-colors cursor-pointer"
                         onClick={() => { if (!rowMenuOpen) setDetailInstance(inst); }}>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3" data-label="Instancia">
                           <div className="flex items-center gap-2.5">
                             <div className="w-9 h-9 rounded-full bg-[#25D366]/10 flex items-center justify-center">
                               <MessageSquare size={15} className="text-[#25D366]" />
                             </div>
                             <div>
-                              <span className="text-sm text-gray-900 dark:text-[#ededed]">{workspace?.instanceDisplayName || inst.instanceName}</span>
+                              <span className="text-sm text-gray-900 dark:text-[#ededed]">{user?.instanceDisplayName || inst.instanceName}</span>
                               <p className="text-xs text-gray-400 dark:text-[#666]">{inst.owner || '-'}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-600 dark:text-[#aaa]">{formatPhone(inst.owner) || '-'}</td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 text-sm text-gray-600 dark:text-[#aaa]" data-label="Numero">{formatPhone(inst.owner) || '-'}</td>
+                        <td className="px-4 py-3" data-label="Status">
                           <span className={`inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded border ${st.color} ${st.bg} ${st.border}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`}></span>
                             {st.label}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-xs text-gray-500 dark:text-[#808080] bg-gray-50 dark:bg-[#111] rounded">{inst.integration || 'BAILEYS'}</td>
-                        <td className="px-4 py-3 relative" onClick={(e) => e.stopPropagation()}>
+                        <td className="px-4 py-3 text-xs text-gray-500 dark:text-[#808080] bg-gray-50 dark:bg-[#111] rounded" data-label="Canal">{inst.integration || 'BAILEYS'}</td>
+                        <td className="px-4 py-3 relative" data-label="Acoes" onClick={(e) => e.stopPropagation()}>
                           <button onClick={() => setRowMenuOpen(rowMenuOpen === inst.instanceName ? null : inst.instanceName)}
                             className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-[#1a1a1a] text-gray-400 dark:text-[#666] hover:text-gray-600 dark:hover:text-[#ccc] transition-colors"
                             disabled={isLoading}>
@@ -302,7 +302,8 @@ export default function WhatsAppView() {
                   })}
                 </tbody>
               </table>
-            )}
+              <Pagination page={safePage} totalPages={pageCount} onPageChange={setCurrentPage} total={instances.length} pageSize={PAGE_SIZE} label="instancias" />
+            </>)}
           </div>
         </div>
 
@@ -317,26 +318,25 @@ export default function WhatsAppView() {
         {showQRModal && (
           <QRCodeModal
             instanceName={showQRModal.instanceName}
-            displayName={workspace?.instanceDisplayName || showQRModal.instanceName}
+            displayName={user?.instanceDisplayName || showQRModal.instanceName}
             qr={showQRModal.qr}
             onClose={() => setShowQRModal(null)}
             onRefresh={handleConnect}
             fetchInstances={fetchInstances}
-            workspaceId={workspace?.id}
           />
         )}
 
         {confirmDisconnect && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 fade-in" onClick={() => setConfirmDisconnect(null)}>
-            <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-xl w-[400px] p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/20 fade-in p-0 sm:p-4" onClick={() => setConfirmDisconnect(null)}>
+            <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-t-2xl sm:rounded-xl w-full max-w-[400px] p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center"><Trash2 size={18} className="text-red-500" /></div>
                 <h3 className="text-base text-gray-900 dark:text-[#ededed]">Excluir instancia</h3>
               </div>
               <p className="text-sm text-gray-500 dark:text-[#808080] mb-5">
-                Tem certeza que deseja excluir "{workspace?.instanceDisplayName || confirmDisconnect.instanceName}"? Esta acao e irreversivel.
+                Tem certeza que deseja excluir "{user?.instanceDisplayName || confirmDisconnect.instanceName}"? Esta acao e irreversivel.
               </p>
-              <div className="flex justify-end gap-2">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
                 <button onClick={() => setConfirmDisconnect(null)}
                   className="px-4 py-2 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg text-gray-600 dark:text-[#aaa] hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors">
                   Cancelar
@@ -377,8 +377,8 @@ function CreateInstanceModal({ onClose, onConfirm, loading }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 fade-in" onClick={onClose}>
-      <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-xl w-[480px] p-6" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/20 fade-in p-0 sm:p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-t-2xl sm:rounded-xl w-full max-w-[480px] p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-base text-gray-900 dark:text-[#ededed]">Nova Instancia</h3>
           <button onClick={onClose} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-[#1a1a1a] text-gray-400 dark:text-[#666] hover:text-gray-600 dark:hover:text-[#ccc] transition-colors">
@@ -409,23 +409,17 @@ function CreateInstanceModal({ onClose, onConfirm, loading }) {
   );
 }
 
-function QRCodeModal({ instanceName, displayName, qr, onClose, onRefresh, fetchInstances, workspaceId }) {
+function QRCodeModal({ instanceName, displayName, qr, onClose, onRefresh, fetchInstances }) {
   const [currentQR, setCurrentQR] = useState(qr);
   const [refreshing, setRefreshing] = useState(false);
-  const [copied, setCopied] = useState(false);
   const pollRef = useRef(null);
-
-  const [activeMethod, setActiveMethod] = useState('qr');
-  const [phoneInput, setPhoneInput] = useState('');
-  const [pairingCode, setPairingCode] = useState('');
-  const [loadingPairing, setLoadingPairing] = useState(false);
 
   useEffect(() => {
     if (!instanceName) return;
 
     const pollStatus = async () => {
       try {
-        const res = await evolutionApi.listInstances(workspaceId);
+        const res = await evolutionApi.listInstances();
         const raw = Array.isArray(res) ? res
           : Array.isArray(res?.data) ? res.data
           : Array.isArray(res?.instances) ? res.instances
@@ -480,34 +474,9 @@ function QRCodeModal({ instanceName, displayName, qr, onClose, onRefresh, fetchI
     setRefreshing(false);
   };
 
-  const handleRequestPairingCode = async () => {
-    if (!phoneInput.trim()) return;
-    setLoadingPairing(true);
-    try {
-      const res = await evolutionApi.connectInstance(instanceName, phoneInput.trim());
-      const code = res?.data?.pairingCode || res?.pairingCode || res?.data?.code || res?.code || '';
-      if (code) {
-        setPairingCode(code);
-      } else {
-        showToast('Nao foi possível gerar o código', 'error');
-      }
-    } catch (err) {
-      showToast(err.message || 'Erro ao gerar código', 'error');
-    } finally {
-      setLoadingPairing(false);
-    }
-  };
-
-  const handleCopyCode = () => {
-    if (!pairingCode) return;
-    navigator.clipboard.writeText(pairingCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 fade-in" onClick={onClose}>
-      <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-xl w-[480px] p-6" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/20 fade-in p-0 sm:p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-t-2xl sm:rounded-xl w-full max-w-[480px] p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-base text-gray-900 dark:text-[#ededed]">Conectar - {displayName}</h3>
           <button onClick={onClose} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-[#1a1a1a] text-gray-400 dark:text-[#666] hover:text-gray-600 dark:hover:text-[#ccc] transition-colors">
@@ -515,100 +484,34 @@ function QRCodeModal({ instanceName, displayName, qr, onClose, onRefresh, fetchI
           </button>
         </div>
 
-        <div className="flex border border-gray-200 dark:border-white/[0.06] rounded-lg overflow-hidden mb-5">
-          <button onClick={() => setActiveMethod('qr')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm transition-colors ${activeMethod === 'qr' ? 'bg-[var(--zelt-primary)] text-white' : 'text-gray-500 dark:text-[#808080] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'}`}>
-            <QrCode size={15} /> QR Code
-          </button>
-          <button onClick={() => setActiveMethod('pairing')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm transition-colors ${activeMethod === 'pairing' ? 'bg-[var(--zelt-primary)] text-white' : 'text-gray-500 dark:text-[#808080] hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'}`}>
-            <Phone size={15} /> Pareamento
+        <div className="text-center space-y-4">
+          {currentQR ? (
+            <>
+              <div className="mx-auto bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-xl p-3 inline-block">
+                <img src={currentQR} alt="QR Code" className="w-56 h-56" />
+              </div>
+              <p className="text-sm text-gray-500 dark:text-[#808080]">Escaneie com o WhatsApp no seu celular</p>
+              <p className="text-xs text-gray-400 dark:text-[#666]">{'WhatsApp > Aparelhos conectados > Conectar aparelho'}</p>
+            </>
+          ) : (
+            <div className="py-12">
+              <div className="w-12 h-12 border-2 border-[#25D366] border-t-transparent rounded-full mx-auto mb-3" style={{ animation: 'spin 1s linear infinite' }}></div>
+              <p className="text-sm text-gray-500 dark:text-[#808080]">Aguardando QR Code...</p>
+              <p className="text-xs text-gray-400 dark:text-[#666] mt-1">Pode levar alguns segundos</p>
+            </div>
+          )}
+
+          <button onClick={handleRefresh} disabled={refreshing}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg text-gray-600 dark:text-[#aaa] hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors disabled:opacity-50">
+            <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} /> {refreshing ? 'Atualizando...' : 'Gerar novo QR'}
           </button>
         </div>
-
-        {activeMethod === 'qr' ? (
-          <div className="text-center space-y-4">
-            {currentQR ? (
-              <>
-                <div className="mx-auto bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-xl p-3 inline-block">
-                  <img src={currentQR} alt="QR Code" className="w-56 h-56" />
-                </div>
-                <p className="text-sm text-gray-500 dark:text-[#808080]">Escaneie com o WhatsApp no seu celular</p>
-                <p className="text-xs text-gray-400 dark:text-[#666]">{'WhatsApp > Aparelhos conectados > Conectar aparelho'}</p>
-              </>
-            ) : (
-              <div className="py-12">
-                <div className="w-12 h-12 border-2 border-[#25D366] border-t-transparent rounded-full mx-auto mb-3" style={{ animation: 'spin 1s linear infinite' }}></div>
-                <p className="text-sm text-gray-500 dark:text-[#808080]">Aguardando QR Code...</p>
-                <p className="text-xs text-gray-400 dark:text-[#666] mt-1">Pode levar alguns segundos</p>
-              </div>
-            )}
-
-            <button onClick={handleRefresh} disabled={refreshing}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg text-gray-600 dark:text-[#aaa] hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors disabled:opacity-50">
-              <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} /> {refreshing ? 'Atualizando...' : 'Gerar novo QR'}
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {!pairingCode ? (
-              <>
-                <div>
-                  <label className="block text-sm text-gray-600 dark:text-[#aaa] mb-1.5">Número de telefone</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="tel"
-                      value={phoneInput}
-                      onChange={(e) => setPhoneInput(e.target.value.replace(/[^0-9]/g, ''))}
-                      onKeyDown={(e) => e.key === 'Enter' && handleRequestPairingCode()}
-                      placeholder="5511999888777"
-                      className="flex-1 px-3 py-2.5 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-[#ededed] placeholder-gray-300 dark:placeholder-[#555] outline-none focus:border-[var(--zelt-primary)] transition-colors"
-                    />
-                    <button onClick={handleRequestPairingCode} disabled={!phoneInput.trim() || loadingPairing}
-                      className="px-4 py-2.5 text-sm bg-[var(--zelt-primary)] text-white rounded-lg hover:bg-[var(--zelt-primary-hover)] transition-colors disabled:opacity-50 whitespace-nowrap">
-                      {loadingPairing ? <Loader2 size={14} className="animate-spin" /> : 'Gerar código'}
-                    </button>
-                  </div>
-                  <p className="text-xs text-gray-400 dark:text-[#666] mt-1.5">Formato: código do país + DDD + número (ex: 5511999888777)</p>
-                </div>
-                <div className="bg-gray-50 dark:bg-[#111] border border-gray-100 dark:border-white/[0.06] rounded-lg p-4">
-                  <p className="text-sm text-gray-500 dark:text-[#808080] text-center">
-                    Digite o número do telefone que será conectado e clique em "Gerar código" para obter o código de pareamento de 8 dígitos.
-                  </p>
-                </div>
-              </>
-            ) : (
-              <div className="text-center space-y-4">
-                <div className="bg-gray-50 dark:bg-[#111] border border-gray-100 dark:border-white/[0.06] rounded-xl p-6">
-                  <p className="text-xs text-gray-400 dark:text-[#666] mb-2">Seu código de pareamento</p>
-                  <p className="text-3xl font-mono font-semibold text-gray-900 dark:text-[#ededed] tracking-[0.3em]">{pairingCode}</p>
-                </div>
-                <p className="text-sm text-gray-500 dark:text-[#808080]">Abra o WhatsApp no celular</p>
-                <p className="text-xs text-gray-400 dark:text-[#666]">{'Aparelhos conectados > Conectar aparelho > Conectar com número de telefone'}</p>
-                <p className="text-xs text-gray-400 dark:text-[#666]">Digite o código de 8 dígitos acima no celular</p>
-
-                <div className="flex gap-2 justify-center">
-                  <button onClick={handleCopyCode}
-                    className="inline-flex items-center gap-2 px-4 py-2 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg text-gray-600 dark:text-[#aaa] hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors">
-                    {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                    {copied ? 'Copiado!' : 'Copiar código'}
-                  </button>
-                  <button onClick={() => { setPairingCode(''); setPhoneInput(''); }}
-                    className="inline-flex items-center gap-2 px-4 py-2 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg text-gray-600 dark:text-[#aaa] hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors">
-                    <RefreshCw size={14} /> Gerar novo código
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );
 }
 
 function InstanceDetailModal({ instance, onClose, onConnect, onLogout, onDelete, onRefresh, actionLoading, showToast }) {
-  const { workspace } = useAuth();
   const [activeTab, setActiveTab] = useState('info');
   const [editingPic, setEditingPic] = useState(false);
   const [uploadingPic, setUploadingPic] = useState(false);
@@ -621,18 +524,16 @@ function InstanceDetailModal({ instance, onClose, onConnect, onLogout, onDelete,
   const [togglingAutoReply, setTogglingAutoReply] = useState(false);
 
   useEffect(() => {
-    if (!workspace?.id) return;
-    geminiApi.getAutoReply(workspace.id).then(res => {
+    geminiApi.getAutoReply().then(res => {
       setAiAutoReply(res?.data?.aiAutoReply ?? false);
     }).catch(() => {});
-  }, [workspace?.id]);
+  }, []);
 
   const handleToggleAutoReply = async () => {
-    if (!workspace?.id) return;
     const newState = !aiAutoReply;
     setTogglingAutoReply(true);
     try {
-      await geminiApi.toggleAutoReply(workspace.id, newState);
+      await geminiApi.toggleAutoReply(newState);
       setAiAutoReply(newState);
       showToast(newState ? 'Auto-reply ativado' : 'Auto-reply desativado');
     } catch (err) {
@@ -656,7 +557,7 @@ function InstanceDetailModal({ instance, onClose, onConnect, onLogout, onDelete,
     const s = instance?.setting || {};
     setSettingsDraft({
       rejectCall: s.rejectCall ?? false,
-      groupsIgnore: s.groupsIgnore ?? false,
+      groupsIgnore: s.groupsIgnore ?? true,
       alwaysOnline: s.alwaysOnline ?? false,
       readMessages: s.readMessages ?? false,
       syncFullHistory: s.syncFullHistory ?? false,
@@ -727,35 +628,17 @@ function InstanceDetailModal({ instance, onClose, onConnect, onLogout, onDelete,
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 fade-in" onClick={onClose}>
-      <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-xl w-[560px] max-h-[85vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-white/[0.06]">
-          <div className="flex items-center gap-3">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/20 fade-in" onClick={onClose}>
+      <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-t-2xl sm:rounded-xl w-full sm:w-[560px] max-h-[92dvh] sm:max-h-[85vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="sm:hidden flex justify-center pt-2.5 pb-1 shrink-0">
+          <div className="w-10 h-1 rounded-full bg-gray-200 dark:bg-white/10"></div>
+        </div>
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-white/[0.06] shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
             <button onClick={onClose} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-[#1a1a1a] text-gray-400 dark:text-[#666] hover:text-gray-600 dark:hover:text-[#ccc] transition-colors">
               <ArrowLeft size={16} />
             </button>
-            <h3 className="text-sm text-gray-900 dark:text-[#ededed]">Detalhes da Instancia</h3>
-          </div>
-          <div className="flex items-center gap-2">
-            {instance.status !== 'open' ? (
-              <button onClick={() => onConnect(instance.instanceName)}
-                disabled={actionLoading === instance.instanceName}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-white bg-[#25D366] hover:bg-[#1fb855] rounded-lg transition-colors disabled:opacity-40">
-                {actionLoading === instance.instanceName ? <Loader2 size={11} className="animate-spin" /> : <Wifi size={11} />}
-                Conectar
-              </button>
-            ) : (
-              <button onClick={() => onLogout(instance.instanceName)}
-                disabled={actionLoading === instance.instanceName}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-amber-600 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-500/40 hover:bg-amber-100 rounded-lg transition-colors disabled:opacity-40">
-                {actionLoading === instance.instanceName ? <Loader2 size={11} className="animate-spin" /> : <PowerOff size={11} />}
-                Desconectar
-              </button>
-            )}
-            <button onClick={() => onDelete(instance.instanceName)}
-              className="p-1.5 rounded hover:bg-red-50 dark:bg-red-900/20 text-gray-400 dark:text-[#666] hover:text-red-500 transition-colors">
-              <Trash2 size={14} />
-            </button>
+            <h3 className="text-sm text-gray-900 dark:text-[#ededed] truncate">Detalhes da Instancia</h3>
           </div>
         </div>
 
@@ -788,7 +671,7 @@ function InstanceDetailModal({ instance, onClose, onConnect, onLogout, onDelete,
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="text-base text-gray-900 dark:text-[#ededed] truncate">{whatsName || workspace?.instanceDisplayName || instance.instanceName}</h4>
+            <h4 className="text-base text-gray-900 dark:text-[#ededed] truncate">{whatsName || instance.instanceName}</h4>
             <p className="text-[11px] text-gray-400 dark:text-[#666] mt-0.5">{formatPhone(ownerJid)}</p>
             <div className="flex items-center gap-2 mt-1.5">
               <span className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded border ${st.color} ${st.bg} ${st.border}`}>
@@ -800,10 +683,10 @@ function InstanceDetailModal({ instance, onClose, onConnect, onLogout, onDelete,
           </div>
         </div>
 
-        <div className="flex border-b border-gray-100 dark:border-white/[0.06] px-5">
+        <div className="flex border-b border-gray-100 dark:border-white/[0.06] px-5 overflow-x-auto shrink-0">
           {tabs.map((tab) => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 px-3 py-2.5 text-[11px] font-medium border-b-2 transition-colors ${
+              className={`flex items-center gap-1.5 px-3 py-2.5 text-[11px] font-medium border-b-2 whitespace-nowrap transition-colors ${
                 activeTab === tab.id
                   ? 'border-[var(--zelt-primary)] text-[var(--zelt-primary)]'
                   : 'border-transparent text-gray-400 dark:text-[#666] hover:text-gray-600 dark:hover:text-[#ccc]'
@@ -929,7 +812,7 @@ function InstanceDetailModal({ instance, onClose, onConnect, onLogout, onDelete,
 
           {activeTab === 'stats' && (
             <div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="cards-carousel">
                 {[
                   { label: 'Mensagens', value: counts.Message || 0, icon: Send, color: '#25D366', bg: '#25D36610' },
                   { label: 'Contatos', value: counts.Contact || 0, icon: Users, color: '#0EA5E9', bg: '#0EA5E910' },
@@ -946,6 +829,28 @@ function InstanceDetailModal({ instance, onClose, onConnect, onLogout, onDelete,
               </div>
             </div>
           )}
+        </div>
+
+        <div className="flex items-center gap-2 px-5 py-3 border-t border-gray-100 dark:border-white/[0.06] shrink-0">
+          {instance.status !== 'open' ? (
+            <button onClick={() => onConnect(instance.instanceName)}
+              disabled={actionLoading === instance.instanceName}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-medium text-white bg-[#25D366] hover:bg-[#1fb855] rounded-lg transition-colors disabled:opacity-40">
+              {actionLoading === instance.instanceName ? <Loader2 size={11} className="animate-spin" /> : <Wifi size={11} />}
+              Conectar
+            </button>
+          ) : (
+            <button onClick={() => onLogout(instance.instanceName)}
+              disabled={actionLoading === instance.instanceName}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-medium text-amber-600 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-500/40 hover:bg-amber-100 rounded-lg transition-colors disabled:opacity-40">
+              {actionLoading === instance.instanceName ? <Loader2 size={11} className="animate-spin" /> : <PowerOff size={11} />}
+              Desconectar
+            </button>
+          )}
+          <button onClick={() => onDelete(instance.instanceName)}
+            className="p-2.5 rounded-lg border border-gray-200 dark:border-white/[0.06] text-gray-400 dark:text-[#666] hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition-colors">
+            <Trash2 size={15} />
+          </button>
         </div>
       </div>
     </div>

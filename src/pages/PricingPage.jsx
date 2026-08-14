@@ -1,91 +1,63 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { TbCheck, TbCircleDot, TbShieldCheck, TbHeadset, TbClock } from 'react-icons/tb';
+import { TbCheck, TbCircleDot, TbShieldCheck, TbHeadset, TbClock, TbFlame } from 'react-icons/tb';
 import HeaderZelt from '../components/Header';
 import FooterSection from '../components/Footer';
 
 const plans = [
   {
-    name: 'Teste Grátis',
-    description: 'Experimente a plataforma completa por 3 dias sem compromisso.',
-    isTrial: true,
-    monthlyPrice: 0,
-    annualPrice: 0,
-    periodLabel: '3 dias',
+    name: 'Professional',
+    description: 'Para quem precisa de atendimento ilimitado com automação completa.',
+    monthlyPrice: 149,
+    annualPrice: 131.12,
+    popular: true,
     features: [
-      '1 Instância de WhatsApp',
-      'Treinamento de IA',
-      'Painel de conversas',
-      'CRM integrado',
+      '3 dias de teste grátis',
+      'Conversas ilimitadas',
+      '10.000 contatos',
+      '20 GB de base de conhecimento',
+      'Automações avançadas',
+      'Relatórios completos',
+      'Integrações extras',
     ],
     buttonText: 'Iniciar teste grátis',
   },
   {
-    name: 'Starter',
-    description: 'Ideal para pequenas empresas automatizarem o atendimento no WhatsApp.',
-    monthlyPrice: 197,
-    annualPrice: 173.36,
-    features: [
-      'IA para WhatsApp',
-      'Respostas automáticas',
-      'Treinamento básico de IA',
-      'Painel de conversas',
-      'CRM integrado',
-      'Integrações essenciais',
-    ],
-    buttonText: 'Começar agora',
-  },
-  {
-    name: 'Professional',
-    description: 'Para empresas em crescimento que precisam de mais controle e automação.',
-    monthlyPrice: 425,
-    annualPrice: 374,
-    popular: true,
-    features: [
-      'Tudo do Starter',
-      'Múltiplos atendentes',
-      'CRM integrado',
-      'Automações avançadas',
-      'Base de conhecimento maior',
-      'Relatórios completos',
-      'Integrações extras',
-    ],
-    buttonText: 'Assinar Professional',
-  },
-  {
     name: 'Enterprise',
-    description: 'Soluções sob medida para médias e grandes empresas com alto volume.',
-    monthlyPrice: 1423,
-    annualPrice: 1252.24,
+    description: 'Soluções sob medida para operações de alto volume e requisitos especiais.',
+    monthlyPrice: null,
+    annualPrice: null,
     features: [
-      'Tudo do Professional',
-      'Usuários ilimitados',
-      'Suporte prioritário',
+      '3 dias de teste grátis',
+      '100 GB de base de conhecimento',
+      'Contatos ilimitados',
       'Integrações personalizadas',
       'APIs dedicadas',
-      'Múltiplas instâncias',
       'Treinamento avançado da IA',
-      'CRM integrado',
-      'Recursos exclusivos',
+      'Suporte dedicado com SLA',
     ],
     buttonText: 'Falar com Especialista',
   },
 ];
 
 const comparisonFeatures = [
-  { name: 'Instâncias de WhatsApp', starter: '1', professional: '3', enterprise: 'Ilimitado' },
-  { name: 'Atendentes', starter: '1', professional: '5', enterprise: 'Ilimitado' },
-  { name: 'Treinamento de IA', starter: 'Básico', professional: 'Avançado', enterprise: 'Premium' },
-  { name: 'Base de conhecimento', starter: '50 MB', professional: '500 MB', enterprise: 'Ilimitado' },
-  { name: 'Automações', starter: 'Básicas', professional: 'Avançadas', enterprise: 'Personalizadas' },
-  { name: 'Relatórios', starter: 'Simples', professional: 'Completos', enterprise: 'Personalizados' },
-  { name: 'Integrações', starter: 'Essenciais', professional: 'Extras', enterprise: 'Personalizadas' },
-  { name: 'Suporte', starter: 'E-mail', professional: 'Chat prioritário', enterprise: 'Dedicado 24/7' },
-  { name: 'API dedicada', starter: '—', professional: '—', enterprise: 'Sim' },
-  { name: 'SLA garantido', starter: '—', professional: '—', enterprise: 'Sim' },
+  { name: 'Mensagens por mês', professional: 'Ilimitadas', enterprise: 'Sob consulta' },
+  { name: 'Contatos', professional: '10.000', enterprise: 'Ilimitados' },
+  { name: 'Base de conhecimento', professional: '20 GB', enterprise: '100 GB' },
+  { name: 'Instâncias de WhatsApp', professional: '1', enterprise: 'Sob consulta' },
+  { name: 'Treinamento de IA', professional: 'Avançado', enterprise: 'Premium' },
+  { name: 'Automações', professional: 'Avançadas', enterprise: 'Personalizadas' },
+  { name: 'Relatórios', professional: 'Completos', enterprise: 'Personalizados' },
+  { name: 'Integrações', professional: 'Extras', enterprise: 'Personalizadas' },
+  { name: 'Suporte', professional: 'Chat prioritário', enterprise: 'Dedicado 24/7' },
+  { name: 'SLA garantido', professional: '—', enterprise: 'Sim' },
 ];
 
 const faqs = [
+  {
+    question: 'Como funciona o teste grátis?',
+    answer: 'Todos os planos incluem 3 dias de teste grátis. Você pode experimentar a plataforma completa antes de assinar.',
+  },
   {
     question: 'Como funciona a cobrança do plano anual?',
     answer: 'O plano anual é cobrado em uma única parcela com 12% de desconto sobre o valor equivalente aos 12 meses de assinatura.',
@@ -96,19 +68,15 @@ const faqs = [
   },
   {
     question: 'Tem limite de mensagens?',
-    answer: 'O plano Starter possui limite mensal de mensagens. Planos Professional e Enterprise possuem limites expandidos e sob consulta.',
-  },
-  {
-    question: 'Posso cancelar quando quiser?',
-    answer: 'Sim, sem multa nem fidelidade. Cancele direto pelo painel a qualquer momento.',
+    answer: 'O Professional oferece conversas ilimitadas. O Enterprise é sob consulta.',
   },
   {
     question: 'O teste grátis precisa de cartão de crédito?',
-    answer: 'Não. O teste grátis de 3 dias está disponível sem necessidade de cartão de crédito.',
+    answer: 'Não. Você testa os 3 dias sem cartão de crédito e só assina se quiser continuar.',
   },
   {
-    question: 'Qual a diferença entre Starter e Professional?',
-    answer: 'O Professional oferece múltiplos atendentes, automações avançadas, relatórios completos e mais integrações. Ideal para empresas em crescimento.',
+    question: 'Qual a diferença entre Professional e Enterprise?',
+    answer: 'O Professional é ideal para operações de alto volume com conversas ilimitadas e automações avançadas. O Enterprise oferece integrações personalizadas, APIs dedicadas e suporte com SLA.',
   },
 ];
 
@@ -131,7 +99,7 @@ export default function PricingPage() {
             <span className="text-gray-400">Escolha o plano ideal para você.</span>
           </h1>
           <p className="mt-6 text-lg text-gray-600 font-normal leading-relaxed max-w-2xl mx-auto">
-            Comece com o teste grátis. Sem cartão de crédito, sem compromisso. Cancele quando quiser.
+            Teste grátis por 3 dias em todos os planos. Sem cartão de crédito, sem compromisso. Cancele quando quiser.
           </p>
 
           <div className="mt-8 inline-flex items-center gap-3 rounded-full border border-gray-200 p-1 bg-gray-50">
@@ -153,8 +121,8 @@ export default function PricingPage() {
       </section>
 
       <section className="px-4 py-12 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mx-auto max-w-4xl">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             {plans.map((plan, index) => (
               <div
                 key={index}
@@ -172,17 +140,11 @@ export default function PricingPage() {
                         Mais popular
                       </span>
                     )}
-                    {plan.isTrial && (
-                      <span className="text-[10px] font-semibold bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full uppercase tracking-wider border border-emerald-200">
-                        Grátis
-                      </span>
-                    )}
                   </div>
 
-                  {plan.isTrial ? (
+                  {plan.monthlyPrice === null ? (
                     <div className="mt-4 text-3xl font-semibold tracking-tight text-[#111111] h-[44px] flex items-baseline">
-                      Grátis
-                      <span className="ml-2 text-xs font-normal text-gray-500">por 3 dias</span>
+                      Sob consulta
                     </div>
                   ) : (
                     <div className="mt-4 flex flex-col text-[#111111]">
@@ -200,6 +162,11 @@ export default function PricingPage() {
                     </div>
                   )}
 
+                  <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 px-3 py-1 text-[11px] font-semibold">
+                    <TbFlame className="h-3.5 w-3.5" />
+                    3 dias de teste grátis
+                  </div>
+
                   <p className="mt-4 text-xs text-gray-500 leading-relaxed min-h-[48px]">{plan.description}</p>
 
                   <ul className="mt-6 space-y-3.5 border-t border-gray-100 pt-6">
@@ -213,13 +180,13 @@ export default function PricingPage() {
                 </div>
 
                 <Link
-                  to={plan.isTrial ? '/register' : `/checkout?plan=${plan.name.toLowerCase()}&period=${isAnnual ? 'annual' : 'monthly'}`}
+                  to={plan.monthlyPrice === null
+                    ? '/enterprise'
+                    : `/checkout?plan=${plan.name.toLowerCase()}&period=${isAnnual ? 'annual' : 'monthly'}`}
                   className={`mt-8 block w-full text-center rounded border py-2.5 text-xs font-medium transition-all ${
                     plan.popular
                       ? 'bg-[#6300ff] border-[#6300ff] text-white hover:bg-[#5200d6]'
-                      : plan.isTrial
-                        ? 'bg-[#111111] border-[#111111] text-white hover:bg-black'
-                        : 'border-gray-200 text-black bg-white hover:bg-gray-50 hover:border-gray-300'
+                      : 'border-gray-200 text-black bg-white hover:bg-gray-50 hover:border-gray-300'
                   }`}
                 >
                   {plan.buttonText}
@@ -231,7 +198,7 @@ export default function PricingPage() {
       </section>
 
       <section className="px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-5xl">
+        <div className="mx-auto max-w-4xl">
           <div className="text-center mb-12">
             <h2 className="text-2xl font-normal tracking-tight text-[#111111] sm:text-3xl">
               Compare os planos
@@ -243,8 +210,7 @@ export default function PricingPage() {
               <table className="w-full text-left">
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider w-1/4">Recurso</th>
-                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Starter</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider w-1/3">Recurso</th>
                     <th className="px-6 py-4 text-xs font-semibold text-[#6300ff] uppercase tracking-wider text-center bg-[#6300ff]/5">Professional</th>
                     <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Enterprise</th>
                   </tr>
@@ -253,7 +219,6 @@ export default function PricingPage() {
                   {comparisonFeatures.map((feature, idx) => (
                     <tr key={idx} className="border-b border-gray-100 last:border-0">
                       <td className="px-6 py-3.5 text-sm text-gray-700 font-medium">{feature.name}</td>
-                      <td className="px-6 py-3.5 text-sm text-gray-500 text-center">{feature.starter}</td>
                       <td className="px-6 py-3.5 text-sm text-gray-700 text-center bg-[#6300ff]/5 font-medium">{feature.professional}</td>
                       <td className="px-6 py-3.5 text-sm text-gray-500 text-center">{feature.enterprise}</td>
                     </tr>
@@ -340,7 +305,7 @@ export default function PricingPage() {
               Falar com Vendas
             </Link>
             <Link to="/register" className="rounded border border-gray-200 px-8 py-3.5 text-sm font-medium text-black hover:bg-white transition-colors">
-              Começar Grátis
+              Teste grátis por 3 dias
             </Link>
           </div>
         </div>

@@ -39,7 +39,7 @@ export default function GmailView() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="cards-carousel">
           <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-lg p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-[#EA4335]/10 flex items-center justify-center"><Mail size={18} className="text-[#EA4335]" /></div>
             <div>
@@ -130,8 +130,8 @@ export default function GmailView() {
         </div>
 
         {showDisconnectModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20" onClick={() => setShowDisconnectModal(false)}>
-            <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-xl w-[420px] p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/20 p-0 sm:p-4" onClick={() => setShowDisconnectModal(false)}>
+            <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-t-2xl sm:rounded-xl w-full max-w-[420px] p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center"><Unlink size={18} className="text-red-500" /></div>
                 <h3 className="text-base text-gray-900 dark:text-[#ededed]">Desconectar Gmail</h3>
@@ -140,7 +140,7 @@ export default function GmailView() {
                 Tem certeza que deseja desconectar <span className="text-gray-700 dark:text-[#ccc]">{account?.email}</span>?
                 Os emails nao serao perdidos, mas o envio/recebimento pela plataforma sera interrompido.
               </p>
-              <div className="flex justify-end gap-2">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
                 <button onClick={() => setShowDisconnectModal(false)} className="px-4 py-2 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg text-gray-600 dark:text-[#aaa] hover:bg-gray-50 dark:bg-[#111] transition-colors">Cancelar</button>
                 <button onClick={handleDisconnect} className="px-4 py-2 text-sm bg-red-50 dark:bg-red-900/200 text-white rounded-lg hover:bg-red-600 transition-colors">Desconectar</button>
               </div>

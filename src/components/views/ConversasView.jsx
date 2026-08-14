@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Search, RefreshCw, X, Loader2, WifiOff, Inbox, Clock,
   ArrowDownToLine, ArrowUpFromLine, LayoutGrid, List,
@@ -7,6 +7,9 @@ import {
 import { useWhatsAppStatus } from '../../hooks/useWhatsAppStatus';
 import { useAuth } from '../../contexts/AuthContext';
 import { evolutionApi, chatApi } from '../../lib/api';
+import Pagination from '../../components/ui/Pagination';
+
+const PAGE_SIZE = 10;
 
 function getPhone(chat) {
   const alt = chat.lastMessage?.key?.remoteJidAlt;
@@ -34,11 +37,13 @@ function getDisplayPhone(chat) {
   return digits || raw;
 }
 
-function getDisplayName(chat, contactMap) {
+function getDisplayName(chat, contactMap, clientNumberMap) {
   const jid = chat.remoteJid || '';
   const contact = contactMap[jid];
   if (contact?.customName) return contact.customName;
+  if (contact?.pushName) return contact.pushName;
   if (chat.pushName) return chat.pushName;
+  if (clientNumberMap?.[jid]) return `Cliente ${clientNumberMap[jid]}`;
   return '';
 }
 
@@ -200,10 +205,27 @@ export default function Conversas({ onNavigate }) {
   const [newTagName, setNewTagName] = useState('');
   const [newTagColor, setNewTagColor] = useState('#0EA5E9');
   const [taggingChat, setTaggingChat] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  const { workspace } = useAuth();
-  const instanceName = workspace?.instanceName;
-  const { connected, instances, loading: waLoading } = useWhatsAppStatus(workspace?.id);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
+  const { user } = useAuth();
+  const instanceName = user?.instanceName;
+  const { connected, instances, loading: waLoading } = useWhatsAppStatus();
+
+  const clientNumberMap = useMemo(() => {
+    const map = {};
+    let n = 1;
+    for (const c of chats) {
+      const jid = c.remoteJid || '';
+      if (jid.endsWith('@g.us')) continue;
+      const contact = contactMap[jid];
+      if (!contact?.customName && !contact?.pushName && !c.pushName) map[jid] = n++;
+    }
+    return map;
+  }, [chats, contactMap]);
 
   const fetchChats = useCallback(async () => {
     if (!instanceName) return;
@@ -327,7 +349,7 @@ export default function Conversas({ onNavigate }) {
 
   const filtered = chats.filter(c => {
     const q = search.toLowerCase();
-    const name = getDisplayName(c, contactMap).toLowerCase();
+    const name = getDisplayName(c, contactMap, clientNumberMap).toLowerCase();
     const jid = (c.remoteJid || '').toLowerCase();
     const phone = getPhone(c).toLowerCase();
     const pushName = (c.pushName || '').toLowerCase();
@@ -337,6 +359,10 @@ export default function Conversas({ onNavigate }) {
   });
 
   const totalUnread = chats.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, pageCount);
+  const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   if (waLoading) {
     return (
@@ -384,9 +410,9 @@ export default function Conversas({ onNavigate }) {
         .animate-scale { animation: scaleUp 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
       `}</style>
 
-      <div className="flex flex-col h-[calc(100vh-64px)] p-6 overflow-y-auto">
+      <div className="space-y-5">
 
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <h1 className="text-xl text-gray-900 dark:text-[#ededed]">Conversas</h1>
             <p className="text-xs text-gray-400 dark:text-[#666] mt-0.5">
@@ -396,14 +422,14 @@ export default function Conversas({ onNavigate }) {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 self-end md:self-auto">
-            <div className="relative">
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto md:justify-end">
+            <div className="relative flex-1 min-w-[180px] md:flex-none">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-[#666]" />
               <input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Buscar por nome, numero ou tag..."
-                className="pl-8 pr-3 py-2 text-xs border border-gray-200/80 dark:border-white/[0.06] rounded-xl bg-white dark:bg-[#141414] text-gray-700 dark:text-[#ccc] placeholder-gray-400 dark:placeholder-[#555] outline-none focus:border-[var(--zelt-primary)]/40 transition-all w-56"
+                className="pl-8 pr-3 py-2 text-xs border border-gray-200/80 dark:border-white/[0.06] rounded-xl bg-white dark:bg-[#141414] text-gray-700 dark:text-[#ccc] placeholder-gray-400 dark:placeholder-[#555] outline-none focus:border-[var(--zelt-primary)]/40 transition-all w-full md:w-56"
               />
             </div>
             <button
@@ -457,7 +483,7 @@ export default function Conversas({ onNavigate }) {
             </div>
           ) : viewMode === 'table' ? (
             <div className="bg-white dark:bg-[#141414] rounded-xl border border-gray-200/60 dark:border-white/[0.06] overflow-hidden">
-              <table className="w-full border-collapse">
+              <table className="w-full border-collapse table-stack">
                 <thead>
                   <tr className="border-b border-gray-100 dark:border-white/[0.06]">
                     <th className="px-5 py-3 text-left text-[10px] text-gray-400 dark:text-[#666] uppercase tracking-wide">Contato</th>
@@ -469,8 +495,8 @@ export default function Conversas({ onNavigate }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100/80 dark:divide-white/[0.06]">
-                  {filtered.map((chat) => {
-                    const displayName = getDisplayName(chat, contactMap);
+                  {paginated.map((chat) => {
+                    const displayName = getDisplayName(chat, contactMap, clientNumberMap);
                     const phone = getDisplayPhone(chat);
                     const lastText = getLastMessageText(chat);
                     const fromMe = chat.lastMessage?.key?.fromMe;
@@ -485,7 +511,7 @@ export default function Conversas({ onNavigate }) {
                         onClick={() => setSelectedChat(chat)}
                         className="hover:bg-[var(--zelt-primary)]/[0.02] cursor-pointer transition-colors duration-150"
                       >
-                        <td className="px-5 py-3.5">
+                        <td className="px-5 py-3.5" data-label="Contato">
                           <div className="flex items-center gap-3">
                             <div className="relative">
                               <Avatar name={displayName || chat.pushName} url={chat.profilePicUrl} size={38} />
@@ -501,13 +527,13 @@ export default function Conversas({ onNavigate }) {
                             </div>
                           </div>
                         </td>
-                        <td className="px-5 py-3.5">
+                        <td className="px-5 py-3.5" data-label="Tags">
                           <div className="flex flex-wrap gap-1">
                             {tags.map(t => <TagBadge key={t.id} tag={t} small />)}
                             {tags.length === 0 && <span className="text-[10px] text-gray-300 dark:text-[#555]">-</span>}
                           </div>
                         </td>
-                        <td className="px-5 py-3.5 max-w-[240px]">
+                        <td className="px-5 py-3.5 max-w-[240px]" data-label="Ultima Mensagem">
                           <div className="flex items-center gap-1.5">
                             {fromMe === false ? (
                               <ArrowDownToLine size={11} className="text-gray-300 dark:text-[#555] shrink-0" />
@@ -519,13 +545,13 @@ export default function Conversas({ onNavigate }) {
                             </p>
                           </div>
                         </td>
-                        <td className="px-5 py-3.5 text-xs text-gray-400 dark:text-[#666] whitespace-nowrap">
+                        <td className="px-5 py-3.5 text-xs text-gray-400 dark:text-[#666] whitespace-nowrap" data-label="Horario">
                           <div className="flex items-center gap-1">
                             <Clock size={11} className="text-gray-300 dark:text-[#555]" />
                             {time}
                           </div>
                         </td>
-                        <td className="px-5 py-3.5 text-center">
+                        <td className="px-5 py-3.5 text-center" data-label="Nao Lidas">
                           {unread > 0 ? (
                             <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-[var(--zelt-primary)]/10 text-[var(--zelt-primary)] text-[10px] font-medium">
                               {unread > 99 ? '99+' : unread}
@@ -534,7 +560,7 @@ export default function Conversas({ onNavigate }) {
                             <span className="text-[10px] text-gray-300 dark:text-[#555]">-</span>
                           )}
                         </td>
-                        <td className="px-5 py-3.5 relative" onClick={e => e.stopPropagation()}>
+                        <td className="px-5 py-3.5 relative" data-label="Acoes" onClick={e => e.stopPropagation()}>
                           <button
                             onClick={() => setTaggingChat(taggingChat === chat.remoteJid ? null : chat.remoteJid)}
                             className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-[#1a1a1a] text-gray-400 dark:text-[#666] hover:text-gray-600 dark:hover:text-[#ccc] transition-colors"
@@ -566,11 +592,12 @@ export default function Conversas({ onNavigate }) {
                   })}
                 </tbody>
               </table>
+              <Pagination page={safePage} totalPages={pageCount} onPageChange={setCurrentPage} total={filtered.length} pageSize={PAGE_SIZE} label="conversas" />
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {filtered.map((chat) => {
-                const displayName = getDisplayName(chat, contactMap);
+              {paginated.map((chat) => {
+                const displayName = getDisplayName(chat, contactMap, clientNumberMap);
                 const phone = getDisplayPhone(chat);
                 const lastText = getLastMessageText(chat);
                 const fromMe = chat.lastMessage?.key?.fromMe;
@@ -587,7 +614,7 @@ export default function Conversas({ onNavigate }) {
                   >
                     <button
                       onClick={(e) => { e.stopPropagation(); setTaggingChat(taggingChat === chat.remoteJid ? null : chat.remoteJid); }}
-                      className="absolute top-3 right-3 p-1.5 rounded-lg text-gray-300 dark:text-[#555] hover:text-gray-500 dark:hover:text-[#808080] hover:bg-gray-50 dark:hover:bg-[#1a1a1a] opacity-0 group-hover:opacity-100 transition-all"
+                      className="absolute top-3 right-3 p-1.5 rounded-lg text-gray-400 dark:text-[#666] hover:text-gray-500 dark:hover:text-[#808080] hover:bg-gray-50 dark:hover:bg-[#1a1a1a] max-md:opacity-100 opacity-0 group-hover:opacity-100 transition-all"
                     >
                       <Tag size={12} />
                     </button>
@@ -659,8 +686,8 @@ export default function Conversas({ onNavigate }) {
         )}
 
         {selectedChat && (
-          <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4 animate-fade">
-            <div className="bg-white dark:bg-[#141414] rounded-xl w-full max-w-md overflow-hidden border border-gray-200/60 dark:border-white/[0.06] animate-scale relative">
+          <div className="fixed inset-0 bg-black/30 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade">
+            <div className="bg-white dark:bg-[#141414] rounded-t-2xl sm:rounded-xl w-full sm:max-w-md max-h-[92vh] overflow-y-auto border border-gray-200/60 dark:border-white/[0.06] pb-[env(safe-area-inset-bottom)] animate-scale relative">
               <div className="p-5">
                 <button
                   onClick={() => setSelectedChat(null)}
@@ -670,16 +697,16 @@ export default function Conversas({ onNavigate }) {
                 </button>
 
                 <div className="flex items-center gap-3 mb-5 pb-4 border-b border-gray-100 dark:border-white/[0.06]">
-                  <Avatar name={getDisplayName(selectedChat, contactMap) || selectedChat.pushName} url={selectedChat.profilePicUrl} size={48} />
+                  <Avatar name={getDisplayName(selectedChat, contactMap, clientNumberMap) || selectedChat.pushName} url={selectedChat.profilePicUrl} size={48} />
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-sm text-gray-900 dark:text-[#ededed] truncate">{getDisplayName(selectedChat, contactMap) || 'Desconhecido'}</h3>
+                    <h3 className="text-sm text-gray-900 dark:text-[#ededed] truncate">{getDisplayName(selectedChat, contactMap, clientNumberMap) || 'Desconhecido'}</h3>
                     <p className="text-[11px] text-gray-400 dark:text-[#666] mt-0.5">{getDisplayPhone(selectedChat)}</p>
                   </div>
                 </div>
 
                 <div className="mb-5">
                   <EditableNameModal
-                    name={getDisplayName(selectedChat, contactMap)}
+                    name={getDisplayName(selectedChat, contactMap, clientNumberMap)}
                     onSave={(name) => saveChatName(selectedChat.remoteJid, name)}
                   />
                 </div>
@@ -774,8 +801,8 @@ export default function Conversas({ onNavigate }) {
         )}
 
         {showTagManager && (
-          <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4 animate-fade">
-            <div className="bg-white dark:bg-[#141414] rounded-xl w-full max-w-sm overflow-hidden border border-gray-200/60 dark:border-white/[0.06] animate-scale p-5 relative">
+          <div className="fixed inset-0 bg-black/30 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade">
+            <div className="bg-white dark:bg-[#141414] rounded-t-2xl sm:rounded-xl w-full sm:max-w-sm max-h-[92vh] overflow-y-auto border border-gray-200/60 dark:border-white/[0.06] animate-scale p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] relative">
               <button
                 onClick={() => setShowTagManager(false)}
                 className="absolute top-3 right-3 p-1 text-gray-400 dark:text-[#666] hover:text-gray-600 dark:hover:text-[#ccc] hover:bg-gray-50 dark:hover:bg-[#1a1a1a] rounded-lg transition-colors"

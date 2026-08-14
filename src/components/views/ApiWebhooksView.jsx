@@ -81,7 +81,7 @@ export default function ApiWebhooksView() {
           <p className="text-sm text-gray-400 dark:text-[#666] mt-1">Conecte servicos externos para enriquecer o funcionamento do Zelt.AI</p>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="cards-carousel">
           <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-lg p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-[var(--zelt-primary)]/10 flex items-center justify-center"><Zap size={18} className="text-[var(--zelt-primary)]" /></div>
             <div><p className="text-xl text-gray-900 dark:text-[#ededed]">{apis.length}</p><p className="text-xs text-gray-400 dark:text-[#666]">APIs disponiveis</p></div>
@@ -105,7 +105,7 @@ export default function ApiWebhooksView() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {filtered.map(api => {
             const Icon = api.icon;
             return (
@@ -195,8 +195,8 @@ function ConfigModal({ api, onClose, onSave }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 fade-in" onClick={onClose}>
-      <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-xl w-[480px] p-6" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/20 fade-in p-0 sm:p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-t-2xl sm:rounded-xl w-full max-w-[480px] p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-lg ${api.bg} flex items-center justify-center`}>
@@ -232,7 +232,7 @@ function ConfigModal({ api, onClose, onSave }) {
             ))}
           </div>
         )}
-        <div className="flex justify-end gap-2 mt-5">
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-5">
           <button onClick={onClose} className="px-4 py-2 text-sm border border-gray-200 dark:border-white/[0.06] rounded-lg text-gray-600 dark:text-[#aaa] hover:bg-gray-50 dark:bg-[#111] transition-colors">Cancelar</button>
           <button onClick={handleSave} className="px-4 py-2 text-sm bg-[var(--zelt-primary)] text-white rounded-lg hover:bg-[var(--zelt-primary)]/80 transition-colors">
             {api.enabled ? 'Salvar' : 'Habilitar'}
@@ -245,8 +245,8 @@ function ConfigModal({ api, onClose, onSave }) {
 
 function DetailPanel({ api, onClose, onConfigure, onDisconnect }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 fade-in" onClick={onClose}>
-      <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-xl w-[520px] p-6" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/20 fade-in p-0 sm:p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-t-2xl sm:rounded-xl w-full max-w-[520px] p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
             <div className={`w-12 h-12 rounded-xl ${api.bg} flex items-center justify-center`}>
@@ -282,7 +282,7 @@ function DetailPanel({ api, onClose, onConfigure, onDisconnect }) {
           </div>
         )}
 
-        <div className="flex items-center gap-2 justify-end">
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2 sm:justify-end">
           {api.enabled && (
             <button onClick={onDisconnect} className="px-4 py-2 text-sm border border-red-200 dark:border-red-500/40 text-red-500 rounded-lg hover:bg-red-50 dark:bg-red-900/20 transition-colors">
               Desabilitar

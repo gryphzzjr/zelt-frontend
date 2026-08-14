@@ -212,11 +212,11 @@ export default function ResourcesPage() {
             Comece a automatizar hoje
           </h2>
           <p className="mt-4 text-base text-gray-600 font-normal leading-relaxed max-w-xl mx-auto">
-            Cadastre-se gratuitamente e descubra como o Zelt.AI pode transformar seu atendimento.
+            Cadastre-se e teste grátis por 3 dias para descobrir como o Zelt.AI pode transformar seu atendimento.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/register" className="rounded bg-[#6300ff] px-8 py-3.5 text-sm font-medium text-white hover:bg-[#5200d5] transition-colors">
-              Criar Conta Grátis
+              Criar Conta
             </Link>
             <Link to="/login" className="rounded border border-gray-200 px-8 py-3.5 text-sm font-medium text-black hover:bg-gray-50 transition-colors">
               Já tenho conta

@@ -104,7 +104,7 @@ export default function IntegracoesView() {
           <p className="text-sm text-gray-400 dark:text-[#666] mt-1">Central de configuracao de servicos externos do Zelt.AI</p>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="cards-carousel">
           <div className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-lg p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-[var(--zelt-primary)]/5 flex items-center justify-center"><Link2 size={18} className="text-[var(--zelt-primary)]" /></div>
             <div><p className="text-xl text-gray-900 dark:text-[#ededed]">{connectedCount}</p><p className="text-xs text-gray-400 dark:text-[#666]">Conectadas</p></div>
@@ -119,12 +119,12 @@ export default function IntegracoesView() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {integrations.map(integration => {
             const Icon = integration.icon;
             return (
               <button key={integration.id}
-                onClick={() => navigate(`/workspace/${localStorage.getItem('userId') || ''}/dashboard?view=${integration.id}`)}
+                onClick={() => navigate(`/dashboard?view=${integration.id}`)}
                 className="bg-white dark:bg-[#141414] border border-gray-200 dark:border-white/[0.06] rounded-xl p-5 text-left hover:border-gray-300 dark:hover:border-white/15 transition-colors group">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">

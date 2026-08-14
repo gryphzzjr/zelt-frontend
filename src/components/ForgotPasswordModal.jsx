@@ -155,13 +155,16 @@ export default function ForgotPasswordModal({ isOpen, onClose, initialEmail }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="fixed inset-0 bg-black/40" onClick={onClose} />
 
-      <div className="relative w-full max-w-[400px] bg-white rounded-xl border border-gray-200 shadow-xl">
+      <div className="relative w-full max-w-[400px] max-h-[92vh] overflow-y-auto bg-white dark:bg-[#141414] rounded-t-2xl sm:rounded-xl border border-gray-200 dark:border-white/[0.06] pb-[env(safe-area-inset-bottom)]">
+        <div className="sm:hidden flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full bg-gray-200 dark:bg-white/[0.12]" />
+        </div>
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 flex h-8 w-8 items-center justify-center rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors z-10"
+          className="absolute top-4 right-4 flex h-8 w-8 items-center justify-center rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors z-10"
         >
           <TbX className="h-4 w-4" />
         </button>
