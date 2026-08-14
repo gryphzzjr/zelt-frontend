@@ -1,0 +1,32 @@
+# Zelt
+
+> Zelt é uma plataforma brasileira de atendimento inteligente e automação para empresas. A plataforma combina inteligência artificial, WhatsApp, automações e ferramentas de gestão para ajudar empresas a atender clientes com mais eficiência.
+
+## Site
+
+- [Página inicial](https://zelt-ai.vercel.app/): Apresentação oficial da plataforma Zelt.
+- [Recursos](https://zelt-ai.vercel.app/recursos): Principais recursos e funcionalidades do Zelt.
+- [Preços](https://zelt-ai.vercel.app/precos): Planos e preços da plataforma.
+- [Contato](https://zelt-ai.vercel.app/contato): Canais oficiais de contato.
+
+## Produtos e recursos
+
+- [Atendimento com IA](https://zelt-ai.vercel.app/inteligencia-artificial): Recursos de inteligência artificial aplicados ao atendimento.
+- [WhatsApp](https://zelt-ai.vercel.app/whatsapp): Automação e gerenciamento de atendimento pelo WhatsApp.
+- [Automação de atendimento](https://zelt-ai.vercel.app/automacao-de-atendimento): Ferramentas para automatizar tarefas e respostas durante o atendimento.
+
+## Para empresas
+
+- [Zelt para restaurantes](https://zelt-ai.vercel.app/para-restaurantes): Soluções de atendimento e automação para restaurantes.
+- [Zelt para barbearias](https://zelt-ai.vercel.app/para-barbearias): Soluções de atendimento e automação para barbearias.
+- [Zelt para lojas](https://zelt-ai.vercel.app/para-lojas): Soluções de atendimento e automação para lojas.
+
+## Informações oficiais
+
+O Zelt é desenvolvido pela UrbanSoft.
+
+Para informações atuais sobre funcionalidades, preços, integrações e disponibilidade, consulte as páginas oficiais do site.
+
+## Sitemap
+
+- https://zelt-ai.vercel.app/sitemap.xml
